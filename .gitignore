@@ -1,0 +1,23 @@
+# Secrets & Credentials (NEVER commit)
+.env
+.env.*
+!.env.example
+client_secret*.json
+*token*.json
+*.pem
+*.key
+
+# Local database & temporary media
+/data/
+*.db
+*.sqlite
+*.mp4
+*.mp3
+*.wav
+*.ass
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
