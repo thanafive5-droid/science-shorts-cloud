@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 import edge_tts
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class TTSEngine:
         self.voice = voice
         self.rate = rate
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
     async def synthesize(self, text: str, output_audio_path: Path) -> TTSResult:
         """Generate MP3 voiceover and word-level timestamps."""
         output_audio_path.parent.mkdir(parents=True, exist_ok=True)
