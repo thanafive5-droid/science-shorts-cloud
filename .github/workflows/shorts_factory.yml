@@ -1,0 +1,114 @@
+name: Science Shorts Cloud Factory (24/day)
+
+on:
+  schedule:
+    # Runs 6 times/day (every 4 hours) across all 4 channels = 24 Shorts/day
+    - cron: "0 0,4,8,12,16,20 * * *"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Channel to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - physics
+          - chemistry
+          - biology
+          - general_science
+      dry_run:
+        description: "Dry run (skip YouTube upload)"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  produce-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        channel:
+          - physics
+          - chemistry
+          - biology
+          - general_science
+
+    steps:
+      - name: Check target channel filter
+        id: filter
+        run: |
+          SELECTED="${{ github.event.inputs.channel || 'all' }}"
+          if [ "$SELECTED" = "all" ] || [ "$SELECTED" = "${{ matrix.channel }}" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        if: steps.filter.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        if: steps.filter.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install FFmpeg & fonts
+        if: steps.filter.outputs.run == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core fonts-liberation
+
+      - name: Install Python dependencies
+        if: steps.filter.outputs.run == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Restore topic history database
+        if: steps.filter.outputs.run == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: factory-db-${{ matrix.channel }}-${{ github.run_id }}
+          restore-keys: |
+            factory-db-${{ matrix.channel }}-
+
+      - name: Generate & Upload Short (${{ matrix.channel }})
+        if: steps.filter.outputs.run == 'true'
+        env:
+          DATA_DIR: ./data
+          WORK_DIR: /tmp/shorts_jobs
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.8-flash
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          TTS_VOICE: en-US-AndrewMultilingualNeural
+          TTS_RATE: "+8%"
+          PHYSICS_YT_CLIENT_ID: ${{ secrets.PHYSICS_YT_CLIENT_ID }}
+          PHYSICS_YT_CLIENT_SECRET: ${{ secrets.PHYSICS_YT_CLIENT_SECRET }}
+          PHYSICS_YT_REFRESH_TOKEN: ${{ secrets.PHYSICS_YT_REFRESH_TOKEN }}
+          CHEMISTRY_YT_CLIENT_ID: ${{ secrets.CHEMISTRY_YT_CLIENT_ID }}
+          CHEMISTRY_YT_CLIENT_SECRET: ${{ secrets.CHEMISTRY_YT_CLIENT_SECRET }}
+          CHEMISTRY_YT_REFRESH_TOKEN: ${{ secrets.CHEMISTRY_YT_REFRESH_TOKEN }}
+          BIOLOGY_YT_CLIENT_ID: ${{ secrets.BIOLOGY_YT_CLIENT_ID }}
+          BIOLOGY_YT_CLIENT_SECRET: ${{ secrets.BIOLOGY_YT_CLIENT_SECRET }}
+          BIOLOGY_YT_REFRESH_TOKEN: ${{ secrets.BIOLOGY_YT_REFRESH_TOKEN }}
+          GENERAL_SCIENCE_YT_CLIENT_ID: ${{ secrets.GENERAL_SCIENCE_YT_CLIENT_ID }}
+          GENERAL_SCIENCE_YT_CLIENT_SECRET: ${{ secrets.GENERAL_SCIENCE_YT_CLIENT_SECRET }}
+          GENERAL_SCIENCE_YT_REFRESH_TOKEN: ${{ secrets.GENERAL_SCIENCE_YT_REFRESH_TOKEN }}
+        run: python -m src.main --once ${{ matrix.channel }}
+
+      - name: Save topic history database
+        if: always() && steps.filter.outputs.run == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: factory-db-${{ matrix.channel }}-${{ github.run_id }}
