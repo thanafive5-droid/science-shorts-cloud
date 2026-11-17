@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: science-shorts-cloud
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: PIXABAY_API_KEY
+        sync: false
+    disk:
+      name: factory-data
+      mountPath: /data
+      sizeGB: 1
