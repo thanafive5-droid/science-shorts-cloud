@@ -88,7 +88,8 @@ class VideoEditor:
         vcodec, vcodec_flags = _detect_video_encoder()
 
         # Calculate target clip duration (~2.0 to 3.0 seconds per cut)
-        total_dur = tts_result.duration_sec
+        # Add +0.4s video buffer beyond TTS duration so the final spoken sentence is never cut off
+        total_dur = tts_result.duration_sec + 0.4
         num_clips = len(raw_clips)
         per_clip_dur = max(2.0, min(3.0, total_dur / num_clips))
 
