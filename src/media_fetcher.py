@@ -60,7 +60,17 @@ class MediaFetcher:
             resp.raise_for_status()
             pages = resp.json().get("query", {}).get("pages", {})
             results: list[tuple[str, str]] = []
+            blocked_words = (
+                "president", "senate", "congress", "parliament", "speech",
+                "interview", "press_conference", "ceremony", "election", "trump", "biden",
+            )
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
             for page_id, page in pages.items():
+                title_lower = str(page.get("title", "")).lower()
+                if any(bad in title_lower for bad in blocked_words):
+                    continue
+                if query_terms and not any(term in title_lower for term in query_terms):
+                    continue
                 info = (page.get("videoinfo") or [{}])[0]
                 url = info.get("url")
                 mime = info.get("mime", "")
