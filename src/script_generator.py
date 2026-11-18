@@ -50,9 +50,10 @@ class ScriptGenerator:
 
         system_instruction = (
             "You are an elite YouTube Shorts producer specializing in viral, scientifically accurate "
-            "English-language science videos (30-42 seconds). "
+            "English-language science videos (~20 seconds long). "
             "Your scripts have an irresistible 2-second hook, fast-paced 2-3 second visual cuts, "
-            "and ALWAYS deliver a complete, crystal-clear explanation of the main scientific idea from start to finish."
+            "and ALWAYS deliver a complete, crystal-clear explanation of the main scientific idea "
+            "ending in a complete, punchy final sentence."
         )
 
         prompt = f"""
@@ -63,10 +64,11 @@ TOPICS ALREADY USED (DO NOT REPEAT OR CLOSELY PARAPHRASE THESE):
 {avoid_block}
 
 STRICT REQUIREMENTS:
-1. **Hook (Beat 1)**: Must grab attention in the first 2 seconds with a shocking fact, paradox, or bold question. Never start with "Did you know" or "Hello guys".
-2. **Complete Main Idea**: Total spoken script MUST be 75-105 words (30-42 seconds when spoken). It must explain the full cause-and-effect clearly and end with a punchy, satisfying conclusion.
-3. **Fast-Paced Real Video Beats**: Split the narration into **12 to 15 beats**. Each beat is ~5-8 words (~2-3 seconds of speech) and MUST have a concrete, filmable stock-video `search_query` (2-4 simple English words that Pexels/Pixabay will actually have real footage for, e.g. "lightning storm night", "water droplet slow motion", "chemistry lab beaker", "galaxy stars space").
-4. **Metadata**:
+1. **Length (~20 seconds)**: Total spoken script MUST be **50 to 60 words** (no more than 62 words). It must be concise, easy to understand, and explain one complete main idea from start to finish.
+2. **Hook (Beat 1)**: Grab attention in the first 2 seconds with a shocking fact, paradox, or bold question. Never start with "Did you know" or "Hello guys".
+3. **Complete Final Sentence**: The last beat MUST end with a complete, satisfying concluding sentence (no trailing off or cliffhangers).
+4. **Fast-Paced Relevant Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~6-8 words each = ~2.2-2.8 seconds per cut). Each beat MUST have a concrete, visually relevant `search_query` (2-3 simple English nouns/verbs describing real-world footage that directly matches that exact sentence, e.g. "lightning bolt dark sky", "ice melting water", "solar flare sun"). Avoid abstract words or people talking.
+5. **Metadata**:
    - `title`: Catchy YouTube Shorts title under 75 chars, ending with #shorts
    - `description`: 2-sentence summary + relevant hashtags: {" ".join(channel.default_hashtags)}
    - `tags`: 6-10 relevant SEO keywords
@@ -112,7 +114,7 @@ Return ONLY valid JSON matching this exact schema:
             if str(b.get("narration", "")).strip()
         ]
 
-        if len(beats) < 8:
+        if len(beats) < 5:
             raise ValueError(f"Generated script had too few beats ({len(beats)})")
 
         script = ShortScript(
