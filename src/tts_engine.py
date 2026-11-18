@@ -60,8 +60,8 @@ class TTSEngine:
                     max_end_sec = end_sec
 
         output_audio_path.write_bytes(bytes(audio_chunks))
-        # Add a tiny 0.35s tail pad so the final word isn't cut abruptly
-        total_duration = max(max_end_sec + 0.35, 5.0)
+        # Add a 0.65s tail pad so the final sentence always finishes completely before the clip ends
+        total_duration = max(max_end_sec + 0.65, 5.0)
         logger.info(
             "Synthesized TTS: %.2fs, %d word timings -> %s",
             total_duration,
