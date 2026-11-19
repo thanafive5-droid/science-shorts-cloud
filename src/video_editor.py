@@ -55,6 +55,42 @@ def _run_ffmpeg(args: list[str]) -> None:
         raise RuntimeError(f"FFmpeg failed: {proc.stderr.strip()}")
 
 
+def _probe_video_duration(video_path: Path) -> float:
+    """Measure video clip duration in seconds using ffprobe."""
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(video_path),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode == 0 and proc.stdout.strip():
+        try:
+            return float(proc.stdout.strip())
+        except ValueError:
+            pass
+    return 0.0
+
+
+def _choose_action_offset(clip_dur: float, cut_dur: float, pass_num: int) -> float:
+    """Seek past intro title cards/logos (first 25-35%) so every cut starts on real footage."""
+    if clip_dur <= cut_dur + 1.0:
+        return 0.0
+    max_start = max(0.0, clip_dur - cut_dur - 0.3)
+    if clip_dur >= 14.0:
+        # Skip NASA/Wikimedia 3-8s text intros and land directly on action footage
+        base = max(5.0, clip_dur * 0.35)
+    elif clip_dur >= 6.0:
+        base = clip_dur * 0.28
+    else:
+        base = 0.5
+    return min(base + (pass_num * (cut_dur + 1.0)), max_start)
+
+
 def _detect_video_encoder() -> tuple[str, list[str]]:
     """Use NVIDIA NVENC GPU encoder when available (e.g. Google Colab), else CPU libx264."""
     try:
@@ -93,6 +129,9 @@ class VideoEditor:
         num_clips = len(raw_clips)
         per_clip_dur = max(2.0, min(3.0, total_dur / num_clips))
 
+        # Probe clip durations so we can skip intro title cards and seek into live action
+        clip_durations = {clip: _probe_video_duration(clip) for clip in raw_clips}
+
         # If total_dur exceeds num_clips * 3.0s, cycle clips to keep every cut 2-3s
         cut_plan: list[tuple[Path, float, float]] = []
         elapsed = 0.0
@@ -100,8 +139,8 @@ class VideoEditor:
         while elapsed < total_dur:
             clip = raw_clips[idx % num_clips]
             pass_num = idx // num_clips
-            start_offset = 0.5 + (pass_num * 3.0)
             dur = min(per_clip_dur, total_dur - elapsed)
+            start_offset = _choose_action_offset(clip_durations.get(clip, 0.0), dur, pass_num)
             if dur < 1.2 and cut_plan:
                 # Absorb tiny remainder into previous cut
                 prev_clip, prev_off, prev_dur = cut_plan[-1]
