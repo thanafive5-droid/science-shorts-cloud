@@ -11,6 +11,22 @@ logger = logging.getLogger(__name__)
 USER_AGENT = "ScienceShortsCloud/1.0 (https://github.com)"
 
 
+BLOCKED_WORDS = (
+    "president", "senate", "congress", "parliament", "speech", "interview",
+    "press", "ceremony", "election", "trump", "biden", "lecture", "presentation",
+    "slide", "tutorial", "webinar", "panel", "briefing", "conference", "talk",
+    "podcast", "news", "report", "logo", "intro", "title", "credits", "text",
+    "chart", "graph", "diagram", "infographic", "document", "book", "screen",
+    "recording", "wikipedia", "promo", "trailer", "announcement", "q&a",
+)
+
+
+def _relevance_score(text: str, query_terms: list[str]) -> int:
+    """Count how many query keywords appear in the clip's title/description."""
+    lower = text.lower()
+    return sum(1 for term in query_terms if term in lower)
+
+
 class MediaFetcher:
     """Downloads real HD stock video clips for each 2-3 second visual beat."""
 
@@ -59,25 +75,23 @@ class MediaFetcher:
             )
             resp.raise_for_status()
             pages = resp.json().get("query", {}).get("pages", {})
-            results: list[tuple[str, str]] = []
-            blocked_words = (
-                "president", "senate", "congress", "parliament", "speech",
-                "interview", "press_conference", "ceremony", "election", "trump", "biden",
-            )
+            scored: list[tuple[int, str, str]] = []
             query_terms = [t.lower() for t in query.split() if len(t) > 2]
             for page_id, page in pages.items():
                 title_lower = str(page.get("title", "")).lower()
-                if any(bad in title_lower for bad in blocked_words):
+                if any(bad in title_lower for bad in BLOCKED_WORDS):
                     continue
-                if query_terms and not any(term in title_lower for term in query_terms):
+                score = _relevance_score(title_lower, query_terms)
+                if query_terms and score == 0:
                     continue
                 info = (page.get("videoinfo") or [{}])[0]
                 url = info.get("url")
                 mime = info.get("mime", "")
                 size = info.get("size") or 0
-                if url and mime in ("video/webm", "video/mp4") and 100_000 < size < 45_000_000:
-                    results.append((f"wm_{page_id}", url))
-            return results
+                if url and mime in ("video/webm", "video/mp4") and 150_000 < size < 45_000_000:
+                    scored.append((score, f"wm_{page_id}", url))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            return [(vid, url) for _, vid, url in scored]
         except Exception as exc:
             logger.warning("Wikimedia search failed for '%s': %s", query, exc)
             return []
@@ -92,12 +106,25 @@ class MediaFetcher:
             )
             resp.raise_for_status()
             items = resp.json().get("collection", {}).get("items", [])
-            results: list[tuple[str, str]] = []
-            for item in items[:5]:
-                nasa_id = (item.get("data") or [{}])[0].get("nasa_id")
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
+            candidates: list[tuple[int, str, str]] = []
+            for item in items[:10]:
+                meta = (item.get("data") or [{}])[0]
+                nasa_id = meta.get("nasa_id")
                 href = item.get("href")
+                title_desc = f"{meta.get('title', '')} {meta.get('description', '')}".lower()
                 if not nasa_id or not href:
                     continue
+                if any(bad in title_desc for bad in BLOCKED_WORDS):
+                    continue
+                score = _relevance_score(title_desc, query_terms)
+                if query_terms and score == 0:
+                    continue
+                candidates.append((score, nasa_id, href))
+
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            results: list[tuple[str, str]] = []
+            for _, nasa_id, href in candidates[:5]:
                 assets_resp = await client.get(href, timeout=12.0)
                 if assets_resp.status_code != 200:
                     continue
