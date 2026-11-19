@@ -67,7 +67,9 @@ STRICT REQUIREMENTS:
 1. **Length (~20 seconds)**: Total spoken script MUST be **50 to 60 words** (no more than 62 words). It must be concise, easy to understand, and explain one complete main idea from start to finish.
 2. **Hook (Beat 1)**: Grab attention in the first 2 seconds with a shocking fact, paradox, or bold question. Never start with "Did you know" or "Hello guys".
 3. **Complete Final Sentence**: The last beat MUST end with a complete, satisfying concluding sentence (no trailing off or cliffhangers).
-4. **Fast-Paced Relevant Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~6-8 words each = ~2.2-2.8 seconds per cut). Each beat MUST have a concrete, visually relevant `search_query` (2-3 simple English nouns/verbs describing real-world footage that directly matches that exact sentence, e.g. "lightning bolt dark sky", "ice melting water", "solar flare sun"). Avoid abstract words or people talking.
+4. **Fast-Paced Relevant Real-Video Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~6-8 words each = ~2.2-2.8 seconds per cut).
+   - **CRITICAL FOR BEAT 1 (OPENING HOOK)**: `search_query` MUST be vivid, dramatic real-world camera/nature/space/lab action footage (e.g. "volcano lava eruption", "lightning storm clouds", "ocean waves closeup", "sun solar flare", "bacteria microscope"). NEVER choose queries that return title screens, slides, text graphics, diagrams, or people talking.
+   - Every beat's `search_query` (2-3 concrete English nouns/verbs) MUST directly match the physical object or phenomenon being spoken about in that exact beat.
 5. **Metadata**:
    - `title`: Catchy YouTube Shorts title under 75 chars, ending with #shorts
    - `description`: 2-sentence summary + relevant hashtags: {" ".join(channel.default_hashtags)}
