@@ -3,6 +3,7 @@
 import json
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -52,6 +53,22 @@ class ScriptGenerator:
         """Generate a unique, complete, fast-paced script for the given channel with model fallback."""
         avoid_block = "\n".join(f"- {t}" for t in recent_topics[:60]) if recent_topics else "None yet."
 
+        # 2 out of the 6 daily 4-hour slots (04:00-07:59 UTC & 16:00-19:59 UTC) use a "Wait..." hook
+        slot_index = datetime.now(timezone.utc).hour // 4
+        use_wait_hook = slot_index in (1, 4)
+
+        if use_wait_hook:
+            hook_rule = (
+                '2. **Hook (Beat 1)**: MUST begin literally with the word **"Wait,"** or **"Wait—"** '
+                '(e.g., "Wait—why does...", "Wait, have you ever wondered why...", "Wait, this actually happens when...") '
+                "to create an instant pattern-interrupt in the first 2 seconds."
+            )
+        else:
+            hook_rule = (
+                '2. **Hook (Beat 1)**: Grab attention in the first 2 seconds with a shocking fact, paradox, '
+                'or bold question. Do NOT start with "Wait", "Did you know", or "Hello guys".'
+            )
+
         system_instruction = (
             "You are an elite YouTube Shorts producer specializing in viral, scientifically accurate "
             "English-language science videos (~20 seconds long). "
@@ -69,7 +86,7 @@ TOPICS ALREADY USED (DO NOT REPEAT OR CLOSELY PARAPHRASE THESE):
 
 STRICT REQUIREMENTS:
 1. **Length (~21 seconds total)**: The science explanation MUST be **48 to 56 words** (~20 seconds), followed by a quick 1-second closing line: **"Don't forget to like and subscribe!"** (so total script is ~54 to 62 words = ~21 seconds).
-2. **Hook (Beat 1)**: Grab attention in the first 2 seconds with a shocking fact, paradox, or bold question. Never start with "Did you know" or "Hello guys".
+{hook_rule}
 3. **Complete Final Sentence + CTA**: Finish the full science explanation cleanly, then end the final beat with **"Don't forget to like and subscribe!"**.
 4. **Fast-Paced Relevant & 100% Family-Safe Real-Video Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~6-8 words each = ~2.2-2.8 seconds per cut).
    - **STRICT SAFETY**: Every topic and `search_query` MUST be 100% G-rated, family-friendly, and YouTube-safe (NO nudity, NO graphic anatomy/surgery/blood, NO violence, NO people/crowds/sports).
@@ -123,6 +140,9 @@ Return ONLY valid JSON matching this exact schema:
 
         if len(beats) < 5:
             raise ValueError(f"Generated script had too few beats ({len(beats)})")
+
+        if use_wait_hook and not beats[0].narration.lower().startswith("wait"):
+            beats[0].narration = f"Wait— {beats[0].narration}"
 
         script = ShortScript(
             topic=str(raw["topic"]).strip(),
