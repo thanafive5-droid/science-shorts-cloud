@@ -2,8 +2,8 @@ name: Science Shorts Cloud Factory (24/day)
 
 on:
   schedule:
-    # Runs 6 times/day (every 4 hours) across all 4 channels = 24 Shorts/day
-    - cron: "0 0,4,8,12,16,20 * * *"
+    # Runs 6 times/day (every 4 hours) at off-peak minute :17 to avoid GitHub :00 cron drops
+    - cron: "17 0,4,8,12,16,20 * * *"
   workflow_dispatch:
     inputs:
       channel:
