@@ -53,9 +53,14 @@ class ScriptGenerator:
         """Generate a unique, complete, fast-paced script for the given channel with model fallback."""
         avoid_block = "\n".join(f"- {t}" for t in recent_topics[:60]) if recent_topics else "None yet."
 
-        # 2 out of the 6 daily 4-hour slots (04:00-07:59 UTC & 16:00-19:59 UTC) use a "Wait..." hook
-        slot_index = datetime.now(timezone.utc).hour // 4
-        use_wait_hook = slot_index in (1, 4)
+        # 3 days/week (Mon/Wed/Fri): 2 of 6 daily clips use a "Wait..." hook (slots 1 & 4)
+        # Other 4 days/week (Tue/Thu/Sat/Sun): 1 of 6 daily clips uses a "Wait..." hook (slot 4)
+        now_utc = datetime.now(timezone.utc)
+        slot_index = now_utc.hour // 4
+        if now_utc.weekday() in (0, 2, 4):
+            use_wait_hook = slot_index in (1, 4)
+        else:
+            use_wait_hook = slot_index == 4
 
         if use_wait_hook:
             hook_rule = (
