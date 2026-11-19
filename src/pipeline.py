@@ -9,6 +9,7 @@ from pathlib import Path
 from src.config import CHANNELS, Settings
 from src.database import FactoryDatabase
 from src.media_fetcher import MediaFetcher
+from src.safety_filter import VisualSafetyFilter
 from src.script_generator import ScriptGenerator
 from src.tts_engine import TTSEngine
 from src.video_editor import VideoEditor
@@ -28,9 +29,11 @@ class ShortsPipeline:
             model=settings.gemini_model,
         )
         self.tts = TTSEngine(voice=settings.tts_voice, rate=settings.tts_rate)
+        self.safety_filter = VisualSafetyFilter(api_key=settings.gemini_api_key)
         self.media = MediaFetcher(
             pexels_api_key=settings.pexels_api_key,
             pixabay_api_key=settings.pixabay_api_key,
+            safety_filter=self.safety_filter,
         )
         self.editor = VideoEditor()
         self.uploader = YouTubeUploader()
