@@ -45,8 +45,9 @@ CHANNELS: dict[str, ChannelConfig] = {
         id="biology",
         display_name="Biology",
         niche_description=(
-            "Human body marvels, neuroscience, evolution, bizarre animal adaptations, "
-            "microbiology, genetics, and hidden ecosystems."
+            "Family-friendly wildlife adaptations, ocean ecosystems, plants & photosynthesis, "
+            "space biology, extremophiles, microorganisms, forests, coral reefs, and nature marvels. "
+            "Strictly G-rated: avoid graphic medical/surgical/anatomical or sensitive human body topics."
         ),
         default_hashtags=("#biology", "#science", "#nature", "#shorts"),
         schedule_hours=(0, 4, 8, 12, 16, 20),
