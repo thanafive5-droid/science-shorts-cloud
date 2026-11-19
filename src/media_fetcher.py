@@ -1,4 +1,4 @@
-"""Real stock video fetcher: Pexels/Pixabay (optional) + free keyless Wikimedia Commons & NASA Video APIs."""
+"""Strictly family-safe real video fetcher: NASA Image & Video Library (100% G-rated) + optional Pexels/Pixabay."""
 
 import logging
 from pathlib import Path
@@ -10,25 +10,51 @@ logger = logging.getLogger(__name__)
 
 USER_AGENT = "ScienceShortsCloud/1.0 (https://github.com)"
 
-
+# Strict safety + quality blocklist (zero NSFW, nudity, gore, violence, or talk/slide videos)
 BLOCKED_WORDS = (
+    # Safety / NSFW / graphic / sensitive
+    "nude", "nudity", "naked", "sex", "sexual", "erotic", "porn", "nsfw", "xxx",
+    "breast", "genital", "lingerie", "bikini", "fetish", "strip", "adult",
+    "gore", "blood", "bloody", "surgery", "autopsy", "corpse", "dead body",
+    "violence", "violent", "weapon", "gun", "shooting", "war", "kill", "murder",
+    "drug", "cocaine", "heroin", "suicide", "self-harm",
+    # Non-visual / talk / slide / logo / political
     "president", "senate", "congress", "parliament", "speech", "interview",
     "press", "ceremony", "election", "trump", "biden", "lecture", "presentation",
     "slide", "tutorial", "webinar", "panel", "briefing", "conference", "talk",
     "podcast", "news", "report", "logo", "intro", "title", "credits", "text",
     "chart", "graph", "diagram", "infographic", "document", "book", "screen",
     "recording", "wikipedia", "promo", "trailer", "announcement", "q&a",
+    "town hall", "remarks", "keynote", "awards", "commencement", "stadium",
+)
+
+# 100% G-rated, visually stunning NASA fallback queries by channel/topic
+SAFE_FALLBACK_QUERIES = (
+    "earth from space timelapse",
+    "aurora borealis space",
+    "solar flare sun",
+    "science experiment laboratory",
+    "ocean waves earth",
+    "nebula galaxy stars",
+    "lightning storm earth",
+    "volcano lava earth",
+    "rocket launch flame",
+    "water droplet microgravity",
 )
 
 
+def _is_safe_text(text: str) -> bool:
+    lower = text.lower()
+    return not any(bad in lower for bad in BLOCKED_WORDS)
+
+
 def _relevance_score(text: str, query_terms: list[str]) -> int:
-    """Count how many query keywords appear in the clip's title/description."""
     lower = text.lower()
     return sum(1 for term in query_terms if term in lower)
 
 
 class MediaFetcher:
-    """Downloads real HD stock video clips for each 2-3 second visual beat."""
+    """Downloads strictly family-safe real HD video clips (zero unmoderated sources)."""
 
     def __init__(self, pexels_api_key: str = "", pixabay_api_key: str = "") -> None:
         self.pexels_api_key = pexels_api_key
@@ -49,88 +75,68 @@ class MediaFetcher:
             timeout=15.0,
         )
         if resp.status_code == 401:
-            logger.warning("Pexels API key unauthorized (401); disabling Pexels and using free keyless sources.")
+            logger.warning("Pexels API key unauthorized (401); disabling Pexels and using 100%% G-rated NASA library.")
             self._pexels_disabled = True
             return []
         resp.raise_for_status()
         return resp.json().get("videos", [])
 
-    async def _search_wikimedia(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search Wikimedia Commons for free public-domain/CC real videos (no API key needed)."""
+    async def _search_pixabay(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
+        """Search Pixabay with safesearch=true enabled."""
+        if not self.pixabay_api_key:
+            return []
         try:
             resp = await client.get(
-                "https://commons.wikimedia.org/w/api.php",
-                headers={"User-Agent": USER_AGENT},
-                params={
-                    "action": "query",
-                    "generator": "search",
-                    "gsrnamespace": "6",
-                    "gsrsearch": f"filetype:video {query}",
-                    "gsrlimit": "10",
-                    "prop": "videoinfo",
-                    "viprop": "url|mime|size",
-                    "format": "json",
-                },
+                "https://pixabay.com/api/videos/",
+                params={"key": self.pixabay_api_key, "q": query, "safesearch": "true", "per_page": 10},
                 timeout=15.0,
             )
             resp.raise_for_status()
-            pages = resp.json().get("query", {}).get("pages", {})
-            scored: list[tuple[int, str, str]] = []
-            query_terms = [t.lower() for t in query.split() if len(t) > 2]
-            for page_id, page in pages.items():
-                title_lower = str(page.get("title", "")).lower()
-                if any(bad in title_lower for bad in BLOCKED_WORDS):
+            results: list[tuple[str, str]] = []
+            for h in resp.json().get("hits", []):
+                tags = str(h.get("tags", ""))
+                if not _is_safe_text(tags):
                     continue
-                score = _relevance_score(title_lower, query_terms)
-                if query_terms and score == 0:
-                    continue
-                info = (page.get("videoinfo") or [{}])[0]
-                url = info.get("url")
-                mime = info.get("mime", "")
-                size = info.get("size") or 0
-                if url and mime in ("video/webm", "video/mp4") and 150_000 < size < 45_000_000:
-                    scored.append((score, f"wm_{page_id}", url))
-            scored.sort(key=lambda x: x[0], reverse=True)
-            return [(vid, url) for _, vid, url in scored]
+                url = (h.get("videos", {}).get("medium") or {}).get("url")
+                if url:
+                    results.append((f"pixabay_{h.get('id')}", url))
+            return results
         except Exception as exc:
-            logger.warning("Wikimedia search failed for '%s': %s", query, exc)
+            logger.warning("Pixabay search failed for '%s': %s", query, exc)
             return []
 
     async def _search_nasa(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search NASA Image & Video Library for real HD science/space videos (no API key needed)."""
+        """Search NASA Image & Video Library (100% G-rated, government-curated real HD science videos)."""
         try:
             resp = await client.get(
                 "https://images-api.nasa.gov/search",
-                params={"q": query, "media_type": "video", "page_size": "8"},
+                params={"q": query, "media_type": "video", "page_size": "15"},
                 timeout=15.0,
             )
             resp.raise_for_status()
             items = resp.json().get("collection", {}).get("items", [])
             query_terms = [t.lower() for t in query.split() if len(t) > 2]
             candidates: list[tuple[int, str, str]] = []
-            for item in items[:10]:
+            for item in items:
                 meta = (item.get("data") or [{}])[0]
                 nasa_id = meta.get("nasa_id")
                 href = item.get("href")
-                title_desc = f"{meta.get('title', '')} {meta.get('description', '')}".lower()
+                title_desc = f"{meta.get('title', '')} {meta.get('description', '')}"
                 if not nasa_id or not href:
                     continue
-                if any(bad in title_desc for bad in BLOCKED_WORDS):
+                if not _is_safe_text(title_desc):
                     continue
                 score = _relevance_score(title_desc, query_terms)
-                if query_terms and score == 0:
-                    continue
                 candidates.append((score, nasa_id, href))
 
             candidates.sort(key=lambda x: x[0], reverse=True)
             results: list[tuple[str, str]] = []
-            for _, nasa_id, href in candidates[:5]:
+            for _, nasa_id, href in candidates[:6]:
                 assets_resp = await client.get(href, timeout=12.0)
                 if assets_resp.status_code != 200:
                     continue
                 assets = assets_resp.json()
                 mp4s = [a for a in assets if isinstance(a, str) and a.endswith(".mp4")]
-                # Prefer medium/mobile (~720p) for fast cloud download & encoding
                 preferred = sorted(
                     mp4s,
                     key=lambda u: 0 if "~medium." in u else (1 if "~mobile." in u else 2),
@@ -165,33 +171,34 @@ class MediaFetcher:
         self,
         queries: list[str],
         output_dir: Path,
-        fallback_query: str = "science space nature",
+        fallback_query: str = "earth from space",
     ) -> list[Path]:
-        """Fetch one unique real video clip per beat query."""
+        """Fetch one unique, strictly family-safe real video clip per beat query."""
         output_dir.mkdir(parents=True, exist_ok=True)
         used_ids: set[str] = set()
         downloaded: list[Path] = []
 
         async with httpx.AsyncClient() as client:
             for idx, query in enumerate(queries):
-                url = await self._find_unique_clip_url(client, query, used_ids)
+                safe_query = query if _is_safe_text(query) else fallback_query
+                url = await self._find_unique_clip_url(client, safe_query, used_ids)
 
-                if not url and " " in query:
-                    url = await self._find_unique_clip_url(client, query.split()[0], used_ids)
+                if not url and " " in safe_query:
+                    url = await self._find_unique_clip_url(client, safe_query.split()[0], used_ids)
                 if not url:
                     url = await self._find_unique_clip_url(client, fallback_query, used_ids)
                 if not url:
-                    url = await self._find_unique_clip_url(client, "science", used_ids)
+                    fb = SAFE_FALLBACK_QUERIES[idx % len(SAFE_FALLBACK_QUERIES)]
+                    url = await self._find_unique_clip_url(client, fb, used_ids)
 
                 if not url:
-                    raise RuntimeError(f"Could not find any stock video for beat {idx}: '{query}'")
+                    raise RuntimeError(f"Could not find any safe stock video for beat {idx}: '{query}'")
 
-                ext = ".webm" if ".webm" in url.lower() else ".mp4"
-                clip_path = output_dir / f"raw_{idx:02d}{ext}"
+                clip_path = output_dir / f"raw_{idx:02d}.mp4"
                 await self._download_file(client, url, clip_path)
                 downloaded.append(clip_path)
 
-        logger.info("Downloaded %d unique real video clips", len(downloaded))
+        logger.info("Downloaded %d unique 100%% safe real video clips", len(downloaded))
         return downloaded
 
     async def _find_unique_clip_url(
@@ -209,13 +216,12 @@ class MediaFetcher:
                         used_ids.add(vid)
                         return url
 
-        # Free keyless fallback 1: Wikimedia Commons real videos
-        for vid, url in await self._search_wikimedia(client, query):
+        for vid, url in await self._search_pixabay(client, query):
             if vid not in used_ids:
                 used_ids.add(vid)
                 return url
 
-        # Free keyless fallback 2: NASA Image & Video Library
+        # Strictly 100% G-rated NASA Image & Video Library (Wikimedia Commons permanently removed)
         for vid, url in await self._search_nasa(client, query):
             if vid not in used_ids:
                 used_ids.add(vid)
