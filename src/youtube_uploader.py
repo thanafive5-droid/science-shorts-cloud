@@ -12,7 +12,12 @@ from src.config import YouTubeCredentials
 
 logger = logging.getLogger(__name__)
 
-YOUTUBE_UPLOAD_SCOPE = ["https://www.googleapis.com/auth/youtube.upload"]
+YOUTUBE_SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+]
+
+DEFAULT_COMMENT_TEXT = "Don't forget to like and subscribe for more daily science!"
 
 
 class YouTubeUploader:
@@ -35,7 +40,7 @@ class YouTubeUploader:
             token_uri="https://oauth2.googleapis.com/token",
             client_id=creds_cfg.client_id,
             client_secret=creds_cfg.client_secret,
-            scopes=YOUTUBE_UPLOAD_SCOPE,
+            scopes=YOUTUBE_SCOPES,
         )
         creds.refresh(Request())
 
@@ -72,4 +77,26 @@ class YouTubeUploader:
 
         video_id = response["id"]
         logger.info("Published YouTube Short: https://youtube.com/shorts/%s", video_id)
+        self._post_creator_comment(youtube, video_id)
         return video_id
+
+    @staticmethod
+    def _post_creator_comment(youtube, video_id: str, text: str = DEFAULT_COMMENT_TEXT) -> None:
+        """Post a creator comment under the newly uploaded Short (50 quota units)."""
+        try:
+            youtube.commentThreads().insert(
+                part="snippet",
+                body={
+                    "snippet": {
+                        "videoId": video_id,
+                        "topLevelComment": {
+                            "snippet": {
+                                "textOriginal": text,
+                            }
+                        },
+                    }
+                },
+            ).execute()
+            logger.info("Posted creator comment on video %s", video_id)
+        except Exception as exc:
+            logger.warning("Could not post creator comment on %s: %s", video_id, exc)
