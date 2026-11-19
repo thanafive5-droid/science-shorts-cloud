@@ -1,7 +1,10 @@
 """FFmpeg-based 9:16 fast-paced 2-3 second cut video editor with burned-in captions."""
 
+import array
 import logging
+import math
 import subprocess
+import wave
 from pathlib import Path
 from src.tts_engine import TTSResult, WordTiming
 
@@ -89,6 +92,55 @@ def _choose_action_offset(clip_dur: float, cut_dur: float, pass_num: int) -> flo
     else:
         base = 0.5
     return min(base + (pass_num * (cut_dur + 1.0)), max_start)
+
+
+def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
+    """Synthesize a warm, copyright-free ambient science synth pad BGM track."""
+    sample_rate = 22050
+    total_samples = int(duration_sec * sample_rate)
+    # Warm ambient chord progression (Hz): Am9 -> Fmaj7 -> Cmaj7 -> G6
+    chords = [
+        (220.0, 261.63, 329.63, 392.0),   # Am7
+        (174.61, 220.0, 261.63, 329.63),  # Fmaj7
+        (130.81, 196.0, 246.94, 329.63),  # Cmaj7
+        (196.0, 246.94, 293.66, 329.63),  # G6
+    ]
+    chord_dur = 4.0
+    fade_in = int(0.8 * sample_rate)
+    fade_out = int(1.2 * sample_rate)
+    buf = array.array("h")
+    two_pi = 2.0 * math.pi
+
+    for i in range(total_samples):
+        t = i / sample_rate
+        chord_idx = int(t // chord_dur) % len(chords)
+        freqs = chords[chord_idx]
+        local_t = t % chord_dur
+
+        # Smooth envelope per chord + gentle pulsing LFO for modern science vibe
+        chord_env = min(1.0, local_t / 0.45) * min(1.0, (chord_dur - local_t) / 0.45)
+        lfo = 0.78 + 0.22 * math.sin(two_pi * 1.5 * t)
+
+        val = 0.0
+        for f in freqs:
+            val += math.sin(two_pi * f * t) + 0.18 * math.sin(two_pi * (f * 2.0) * t)
+        val = (val / (len(freqs) * 1.25)) * chord_env * lfo
+
+        # Global fade-in / fade-out
+        if i < fade_in:
+            val *= i / fade_in
+        elif i > total_samples - fade_out:
+            val *= max(0.0, (total_samples - i) / fade_out)
+
+        sample = int(max(-1.0, min(1.0, val * 0.65)) * 32767)
+        buf.append(sample)
+
+    with wave.open(str(wav_path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(buf.tobytes())
+    return wav_path
 
 
 def _detect_video_encoder() -> tuple[str, list[str]]:
@@ -220,9 +272,10 @@ class VideoEditor:
             ]
         )
 
-        # 3. Burn in dynamic Shorts subtitles + mux voiceover audio
+        # 3. Burn in dynamic Shorts subtitles + mix voiceover with copyright-free ambient BGM
         ass_path = build_ass_subtitles(tts_result.words, work_dir / "captions.ass")
         ass_escaped = ass_path.as_posix().replace(":", "\\:")
+        bgm_path = _generate_ambient_bgm(total_dur, work_dir / "bgm.wav")
 
         _run_ffmpeg(
             [
@@ -230,8 +283,16 @@ class VideoEditor:
                 str(stitched_path),
                 "-i",
                 str(tts_result.audio_path),
+                "-i",
+                str(bgm_path),
                 "-vf",
                 f"ass='{ass_escaped}'",
+                "-filter_complex",
+                "[1:a]volume=1.0[vo];[2:a]volume=0.14[bgm];[vo][bgm]amix=inputs=2:duration=longest:dropout_transition=2[aout]",
+                "-map",
+                "0:v:0",
+                "-map",
+                "[aout]",
                 "-c:v",
                 vcodec,
                 *vcodec_flags,
