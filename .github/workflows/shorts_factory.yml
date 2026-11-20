@@ -1,10 +1,8 @@
 name: Science Shorts Cloud Factory (24/day)
 
 on:
-  schedule:
-    # Check every hour (:17) so GitHub cron drops never starve a 4-hour slot;
-    # Python quota guard enforces exact >=3.5h spacing & max 6 uploads/24h/channel (0 quota on skip)
-    - cron: "17 * * * *"
+  # Primary 24/7 exact-time scheduler runs on Railway Cloud (03:00, 07:00, 11:00, 15:00, 19:00, 23:00 ICT).
+  # Keep workflow_dispatch here for manual backup runs on GitHub Actions.
   workflow_dispatch:
     inputs:
       channel:
