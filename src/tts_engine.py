@@ -64,6 +64,14 @@ def _estimate_word_timings(text: str, total_audio_sec: float) -> list[WordTiming
     return timings
 
 
+FALLBACK_VOICES = (
+    "en-US-AndrewMultilingualNeural",
+    "en-US-BrianNeural",
+    "en-US-GuyNeural",
+    "en-US-ChristopherNeural",
+)
+
+
 class TTSEngine:
     """Synthesizes English voiceovers and extracts word boundaries + exact duration."""
 
@@ -71,20 +79,34 @@ class TTSEngine:
         self.voice = voice
         self.rate = rate
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
     async def synthesize(self, text: str, output_audio_path: Path) -> TTSResult:
+        """Try primary voice then fallback voices if Microsoft Edge TTS returns NoAudioReceived."""
+        candidate_voices = list(dict.fromkeys([self.voice, *FALLBACK_VOICES]))
+        last_err: Exception | None = None
+        for voice_name in candidate_voices:
+            try:
+                return await self._synthesize_with_voice(text, output_audio_path, voice_name)
+            except Exception as exc:
+                logger.warning("Edge TTS voice %s failed (%s); trying next voice...", voice_name, exc)
+                last_err = exc
+        raise RuntimeError(f"All Edge TTS voices failed: {last_err}") from last_err
+
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=6))
+    async def _synthesize_with_voice(
+        self, text: str, output_audio_path: Path, voice_name: str
+    ) -> TTSResult:
         """Generate MP3 voiceover, exact ffprobe duration, and word-level timestamps."""
         output_audio_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             communicate = edge_tts.Communicate(
                 text=text,
-                voice=self.voice,
+                voice=voice_name,
                 rate=self.rate,
                 boundary="WordBoundary",
             )
         except TypeError:
             # Older edge-tts versions without explicit boundary kwarg
-            communicate = edge_tts.Communicate(text=text, voice=self.voice, rate=self.rate)
+            communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=self.rate)
 
         words: list[WordTiming] = []
         audio_chunks = bytearray()
