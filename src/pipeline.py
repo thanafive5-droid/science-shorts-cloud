@@ -40,8 +40,14 @@ class ShortsPipeline:
         # Serialize heavy FFmpeg rendering so cloud container RAM stays predictable
         self._render_lock = asyncio.Lock()
 
-    async def run_channel_job(self, channel_id: str) -> None:
+    async def run_channel_job(self, channel_id: str, force: bool = False) -> None:
         """Execute one full Short creation & upload cycle for a channel."""
+        if not force:
+            allowed, reason = self.db.can_post_now(channel_id)
+            if not allowed:
+                logger.info("Skipping [%s] scheduled tick: %s (0 quota used)", channel_id, reason)
+                return
+
         channel = CHANNELS[channel_id]
         job_id = f"{channel_id}_{uuid.uuid4().hex[:8]}"
         job_dir = self.settings.work_dir / job_id
