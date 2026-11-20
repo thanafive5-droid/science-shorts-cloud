@@ -92,7 +92,7 @@ async def start_worker() -> None:
     await asyncio.Event().wait()
 
 
-async def run_once(target: str) -> None:
+async def run_once(target: str, force: bool = False) -> None:
     """Run one Shorts cycle for a single channel or 'all' channels, then exit (for GitHub Actions / Colab)."""
     settings = Settings()
     db = FactoryDatabase(settings.data_dir / "factory.db")
@@ -102,7 +102,7 @@ async def run_once(target: str) -> None:
     for channel_id in targets:
         if channel_id not in CHANNELS:
             raise ValueError(f"Unknown channel '{channel_id}'. Choose from: {', '.join(CHANNELS)} or 'all'")
-        await pipeline.run_channel_job(channel_id)
+        await pipeline.run_channel_job(channel_id, force=force)
 
 
 if __name__ == "__main__":
@@ -113,9 +113,14 @@ if __name__ == "__main__":
         default="",
         help="Run once for a specific channel (physics, chemistry, biology, general_science) or 'all', then exit.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Bypass the 3.5h spacing / 6-per-24h quota guard (for manual workflow_dispatch runs).",
+    )
     args = parser.parse_args()
 
     if args.once:
-        asyncio.run(run_once(args.once))
+        asyncio.run(run_once(args.once, force=args.force))
     else:
         asyncio.run(start_worker())
