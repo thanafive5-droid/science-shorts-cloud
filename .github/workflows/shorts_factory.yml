@@ -2,8 +2,9 @@ name: Science Shorts Cloud Factory (24/day)
 
 on:
   schedule:
-    # Runs 6 times/day (every 4 hours) at off-peak minute :17 to avoid GitHub :00 cron drops
-    - cron: "17 0,4,8,12,16,20 * * *"
+    # Check every hour (:17) so GitHub cron drops never starve a 4-hour slot;
+    # Python quota guard enforces exact >=3.5h spacing & max 6 uploads/24h/channel (0 quota on skip)
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       channel:
@@ -104,7 +105,12 @@ jobs:
           GENERAL_SCIENCE_YT_CLIENT_ID: ${{ secrets.GENERAL_SCIENCE_YT_CLIENT_ID }}
           GENERAL_SCIENCE_YT_CLIENT_SECRET: ${{ secrets.GENERAL_SCIENCE_YT_CLIENT_SECRET }}
           GENERAL_SCIENCE_YT_REFRESH_TOKEN: ${{ secrets.GENERAL_SCIENCE_YT_REFRESH_TOKEN }}
-        run: python -m src.main --once ${{ matrix.channel }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python -m src.main --once ${{ matrix.channel }} --force
+          else
+            python -m src.main --once ${{ matrix.channel }}
+          fi
 
       - name: Save topic history database
         if: always() && steps.filter.outputs.run == 'true'
