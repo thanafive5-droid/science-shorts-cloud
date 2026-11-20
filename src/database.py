@@ -1,7 +1,7 @@
 """SQLite persistence for topic deduplication and post history."""
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +103,39 @@ class FactoryDatabase:
                     now,
                 ),
             )
+
+    def can_post_now(
+        self,
+        channel_id: str,
+        min_interval_hours: float = 3.5,
+        max_per_24h: int = 6,
+    ) -> tuple[bool, str]:
+        """Enforce <=6 uploads/24h and >=3.5h spacing per channel (protects YouTube quota)."""
+        now = datetime.now(timezone.utc)
+        since_24h = (now - timedelta(hours=24)).isoformat()
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT created_at FROM post_history
+                WHERE channel_id = ? AND status = 'uploaded' AND created_at >= ?
+                ORDER BY id DESC
+                """,
+                (channel_id, since_24h),
+            ).fetchall()
+
+        count_24h = len(rows)
+        if count_24h >= max_per_24h:
+            return False, f"daily_cap_reached ({count_24h}/{max_per_24h} in last 24h)"
+
+        if rows:
+            last_dt = datetime.fromisoformat(rows[0]["created_at"])
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            elapsed_hours = (now - last_dt).total_seconds() / 3600.0
+            if elapsed_hours < min_interval_hours:
+                return False, f"too_soon ({elapsed_hours:.2f}h < {min_interval_hours}h)"
+
+        return True, f"ok ({count_24h}/{max_per_24h} in last 24h)"
 
     def get_status_summary(self) -> dict[str, Any]:
         """Return aggregate counts and latest posts for the /status endpoint."""
