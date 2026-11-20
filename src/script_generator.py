@@ -136,11 +136,17 @@ Return ONLY valid JSON matching this exact schema:
         raw = json.loads(response.text)
         beats = [
             VisualBeat(
-                narration=str(b["narration"]).strip(),
-                search_query=str(b["search_query"]).strip(),
+                narration=str(b.get("narration") or b.get("text") or "").strip(),
+                search_query=str(
+                    b.get("search_query")
+                    or b.get("query")
+                    or b.get("visual_query")
+                    or b.get("visual")
+                    or f"{channel.display_name.lower()} science"
+                ).strip(),
             )
             for b in raw.get("beats", [])
-            if str(b.get("narration", "")).strip()
+            if isinstance(b, dict) and str(b.get("narration") or b.get("text") or "").strip()
         ]
 
         if len(beats) < 5:
