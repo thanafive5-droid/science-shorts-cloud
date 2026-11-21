@@ -29,10 +29,22 @@ BLOCKED_WORDS = (
     "chart", "graph", "diagram", "infographic", "document", "book", "screen",
     "recording", "wikipedia", "promo", "trailer", "announcement", "q&a",
     "town hall", "remarks", "keynote", "awards", "commencement", "stadium",
-    "commercial", "advertisement", "cartoon", "animation", "animated",
-    "simulation", "wireframe", "fractal", "geometric", "abstract",
-    "kaleidoscope", "screensaver", "visualizer", "oscilloscope", "cgi", "render",
+    "commercial", "advertisement", "cartoon", "wireframe", "fractal",
+    "geometric", "abstract", "kaleidoscope", "screensaver", "visualizer",
+    "oscilloscope",
 )
+
+ANIMATION_ONLY_BLOCKED = ("animation", "animated", "simulation", "cgi", "render")
+
+
+def _is_safe_text(text: str, allow_animations: bool = False) -> bool:
+    lower = text.lower()
+    if any(bad in lower for bad in BLOCKED_WORDS):
+        return False
+    if not allow_animations and any(bad in lower for bad in ANIMATION_ONLY_BLOCKED):
+        return False
+    return True
+
 
 DIVERSE_FALLBACK_QUERIES = (
     "water droplet slow motion",
@@ -53,11 +65,6 @@ SAFE_NASA_FALLBACK_QUERIES = (
     "solar flare sun",
     "nebula galaxy stars",
 )
-
-
-def _is_safe_text(text: str) -> bool:
-    lower = text.lower()
-    return not any(bad in lower for bad in BLOCKED_WORDS)
 
 
 def _relevance_score(text: str, query_terms: list[str]) -> int:
@@ -279,31 +286,43 @@ class MediaFetcher:
         queries: list[str],
         output_dir: Path,
         fallback_query: str = "nature science",
+        nasa_ratio: float = 0.2,
+        allow_animations: bool = False,
     ) -> list[Path]:
-        """Fetch diverse AI-verified clips: 80-90% non-NASA (Wikimedia/Archive), max 10-20% NASA."""
+        """Fetch diverse AI-verified clips respecting per-channel nasa_ratio and allow_animations."""
         output_dir.mkdir(parents=True, exist_ok=True)
         used_ids: set[str] = set()
         downloaded: list[Path] = []
-        # Enforce 10-20% NASA cap (e.g. max 1 NASA clip out of 7-9 beats)
-        max_nasa = max(1, int(len(queries) * 0.2))
+        max_nasa = max(1, round(len(queries) * nasa_ratio))
         nasa_count = 0
 
         async with httpx.AsyncClient() as client:
             for idx, query in enumerate(queries):
-                safe_query = query if _is_safe_text(query) else fallback_query
+                safe_query = query if _is_safe_text(query, allow_animations=allow_animations) else fallback_query
+                # For Astronomy (nasa_ratio ~0.5), alternate preferring NASA on even beats up to max_nasa
+                prefer_nasa = nasa_ratio >= 0.4 and (idx % 2 == 0) and (nasa_count < max_nasa)
                 allow_nasa = nasa_count < max_nasa
                 clip_path, is_nasa = await self._fetch_verified_clip(
-                    client, idx, safe_query, fallback_query, used_ids, output_dir, allow_nasa
+                    client,
+                    idx,
+                    safe_query,
+                    fallback_query,
+                    used_ids,
+                    output_dir,
+                    allow_nasa=allow_nasa,
+                    prefer_nasa=prefer_nasa,
+                    allow_animations=allow_animations,
                 )
                 if is_nasa:
                     nasa_count += 1
                 downloaded.append(clip_path)
 
         logger.info(
-            "Downloaded %d unique AI-verified clips (%d NASA / %d diverse non-NASA)",
+            "Downloaded %d unique AI-verified clips (%d NASA / %d diverse non-NASA, allow_anim=%s)",
             len(downloaded),
             nasa_count,
             len(downloaded) - nasa_count,
+            allow_animations,
         )
         return downloaded
 
@@ -316,6 +335,8 @@ class MediaFetcher:
         used_ids: set[str],
         output_dir: Path,
         allow_nasa: bool,
+        prefer_nasa: bool = False,
+        allow_animations: bool = False,
     ) -> tuple[Path, bool]:
         """Download and visually verify candidates until one passes Gemini Vision safety & relevance."""
         search_queries = [query]
@@ -325,7 +346,9 @@ class MediaFetcher:
         search_queries.append(fallback_query)
 
         for q in search_queries:
-            candidates = await self._collect_candidates(client, q, used_ids, allow_nasa=allow_nasa)
+            candidates = await self._collect_candidates(
+                client, q, used_ids, allow_nasa=allow_nasa, prefer_nasa=prefer_nasa, allow_animations=allow_animations
+            )
             for vid, url, is_nasa in candidates:
                 used_ids.add(vid)
                 ext = ".webm" if ".webm" in url.lower() else ".mp4"
@@ -339,7 +362,11 @@ class MediaFetcher:
 
                 if self.safety_filter is not None:
                     ok, reason = await asyncio.to_thread(
-                        self.safety_filter.is_clip_safe_and_relevant, temp_path, query, output_dir
+                        self.safety_filter.is_clip_safe_and_relevant,
+                        temp_path,
+                        query,
+                        output_dir,
+                        allow_animations=allow_animations,
                     )
                     if not ok:
                         logger.warning("REJECTED clip %s for '%s': %s", vid, query, reason)
@@ -362,10 +389,17 @@ class MediaFetcher:
         raise RuntimeError(f"Could not find any safe stock video for beat {idx}: '{query}'")
 
     async def _collect_candidates(
-        self, client: httpx.AsyncClient, query: str, used_ids: set[str], allow_nasa: bool
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        used_ids: set[str],
+        allow_nasa: bool,
+        prefer_nasa: bool = False,
+        allow_animations: bool = False,
     ) -> list[tuple[str, str, bool]]:
-        """Return prioritized list of (vid, url, is_nasa): 80-90% non-NASA first, NASA capped at 10-20%."""
-        candidates: list[tuple[str, str, bool]] = []
+        """Return prioritized list of (vid, url, is_nasa)."""
+        non_nasa: list[tuple[str, str, bool]] = []
+        nasa_list: list[tuple[str, str, bool]] = []
 
         if not self._pexels_disabled and self.pexels_api_key:
             for orientation in ("portrait", None):
@@ -376,25 +410,25 @@ class MediaFetcher:
                         continue
                     url = self._pick_pexels_url(v)
                     if url:
-                        candidates.append((vid, url, False))
+                        non_nasa.append((vid, url, False))
 
         for vid, url in await self._search_pixabay(client, query):
             if vid not in used_ids:
-                candidates.append((vid, url, False))
+                non_nasa.append((vid, url, False))
 
-        # Primary diverse keyless sources (80-90%): Wikimedia Commons + Internet Archive
         for vid, url in await self._search_wikimedia(client, query):
             if vid not in used_ids:
-                candidates.append((vid, url, False))
+                non_nasa.append((vid, url, False))
 
         for vid, url in await self._search_archive(client, query):
             if vid not in used_ids:
-                candidates.append((vid, url, False))
+                non_nasa.append((vid, url, False))
 
-        # NASA only allowed up to 10-20% cap per video
         if allow_nasa:
             for vid, url in await self._search_nasa(client, query):
                 if vid not in used_ids:
-                    candidates.append((vid, url, True))
+                    nasa_list.append((vid, url, True))
 
-        return candidates
+        if prefer_nasa:
+            return nasa_list + non_nasa
+        return non_nasa + nasa_list
