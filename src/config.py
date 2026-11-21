@@ -16,6 +16,8 @@ class ChannelConfig:
     default_hashtags: tuple[str, ...]
     schedule_hours: tuple[int, ...]
     schedule_minute: int
+    nasa_ratio: float = 0.2
+    allow_animations: bool = False
 
 
 CHANNELS: dict[str, ChannelConfig] = {
@@ -27,7 +29,7 @@ CHANNELS: dict[str, ChannelConfig] = {
             "thermodynamics, electromagnetism, fluid dynamics, and everyday physics paradoxes."
         ),
         default_hashtags=("#physics", "#science", "#space", "#shorts"),
-        schedule_hours=(0, 4, 8, 12, 16, 20),
+        schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=0,
     ),
     "chemistry": ChannelConfig(
@@ -38,7 +40,7 @@ CHANNELS: dict[str, ChannelConfig] = {
             "materials science, everyday chemistry secrets, and extreme states of matter."
         ),
         default_hashtags=("#chemistry", "#science", "#experiment", "#shorts"),
-        schedule_hours=(0, 4, 8, 12, 16, 20),
+        schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=15,
     ),
     "biology": ChannelConfig(
@@ -50,7 +52,7 @@ CHANNELS: dict[str, ChannelConfig] = {
             "Strictly G-rated: avoid graphic medical/surgical/anatomical or sensitive human body topics."
         ),
         default_hashtags=("#biology", "#science", "#nature", "#shorts"),
-        schedule_hours=(0, 4, 8, 12, 16, 20),
+        schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=30,
     ),
     "general_science": ChannelConfig(
@@ -61,8 +63,36 @@ CHANNELS: dict[str, ChannelConfig] = {
             "space exploration, math in nature, and surprising scientific facts."
         ),
         default_hashtags=("#science", "#facts", "#didyouknow", "#shorts"),
-        schedule_hours=(0, 4, 8, 12, 16, 20),
+        schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=45,
+        nasa_ratio=0.2,
+        allow_animations=False,
+    ),
+    "earth_science": ChannelConfig(
+        id="earth_science",
+        display_name="EarthSci",
+        niche_description=(
+            "Earth science wonders: plate tectonics, volcanoes, earthquakes, ocean currents, "
+            "atmosphere, weather systems, glaciers, geology, rock cycles, and Earth's deep interior."
+        ),
+        default_hashtags=("#earthscience", "#geology", "#earth", "#shorts"),
+        schedule_hours=(3, 7, 11, 15, 19, 23),
+        schedule_minute=5,
+        nasa_ratio=0.2,
+        allow_animations=True,
+    ),
+    "astronomy": ChannelConfig(
+        id="astronomy",
+        display_name="Astronomy",
+        niche_description=(
+            "Astronomy & astrophysics: black holes, neutron stars, exoplanets, nebulae, "
+            "galaxies, supernovae, solar system moons, James Webb discoveries, and cosmic phenomena."
+        ),
+        default_hashtags=("#astronomy", "#space", "#cosmos", "#shorts"),
+        schedule_hours=(3, 7, 11, 15, 19, 23),
+        schedule_minute=20,
+        nasa_ratio=0.5,
+        allow_animations=False,
     ),
 }
 
@@ -118,6 +148,14 @@ class Settings(BaseSettings):
     general_science_yt_client_secret: str = ""
     general_science_yt_refresh_token: str = ""
 
+    earth_science_yt_client_id: str = ""
+    earth_science_yt_client_secret: str = ""
+    earth_science_yt_refresh_token: str = ""
+
+    astronomy_yt_client_id: str = ""
+    astronomy_yt_client_secret: str = ""
+    astronomy_yt_refresh_token: str = ""
+
     def get_youtube_credentials(self, channel_id: str) -> Optional[YouTubeCredentials]:
         """Return OAuth credentials for a channel if all three fields are configured."""
         mapping = {
@@ -140,6 +178,16 @@ class Settings(BaseSettings):
                 self.general_science_yt_client_id,
                 self.general_science_yt_client_secret,
                 self.general_science_yt_refresh_token,
+            ),
+            "earth_science": (
+                self.earth_science_yt_client_id,
+                self.earth_science_yt_client_secret,
+                self.earth_science_yt_refresh_token,
+            ),
+            "astronomy": (
+                self.astronomy_yt_client_id,
+                self.astronomy_yt_client_secret,
+                self.astronomy_yt_refresh_token,
             ),
         }
         cid, csec, rtok = mapping.get(channel_id, ("", "", ""))
