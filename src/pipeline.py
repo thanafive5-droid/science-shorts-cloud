@@ -74,6 +74,8 @@ class ShortsPipeline:
                     queries=queries,
                     output_dir=job_dir / "clips",
                     fallback_query=f"{channel.display_name.lower()} science",
+                    nasa_ratio=channel.nasa_ratio,
+                    allow_animations=channel.allow_animations,
                 )
 
                 final_video = job_dir / "final_short.mp4"
