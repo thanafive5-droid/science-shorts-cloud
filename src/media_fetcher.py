@@ -29,7 +29,9 @@ BLOCKED_WORDS = (
     "chart", "graph", "diagram", "infographic", "document", "book", "screen",
     "recording", "wikipedia", "promo", "trailer", "announcement", "q&a",
     "town hall", "remarks", "keynote", "awards", "commencement", "stadium",
-    "commercial", "advertisement", "cartoon",
+    "commercial", "advertisement", "cartoon", "animation", "animated",
+    "simulation", "wireframe", "fractal", "geometric", "abstract",
+    "kaleidoscope", "screensaver", "visualizer", "oscilloscope", "cgi", "render",
 )
 
 DIVERSE_FALLBACK_QUERIES = (
