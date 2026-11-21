@@ -58,9 +58,14 @@ class ScriptGenerator:
         # Other 4 days/week (Tue/Thu/Sat/Sun): 1 of 6 daily clips
         now_utc = datetime.now(timezone.utc)
         slot_index = now_utc.hour // 4
-        channel_offset = {"physics": 0, "chemistry": 1, "biology": 2, "general_science": 3}.get(
-            channel.id, 0
-        )
+        channel_offset = {
+            "physics": 0,
+            "chemistry": 1,
+            "biology": 2,
+            "general_science": 3,
+            "earth_science": 4,
+            "astronomy": 5,
+        }.get(channel.id, 0)
         base_slot = (now_utc.timetuple().tm_yday + channel_offset) % 6
         if now_utc.weekday() in (0, 2, 4):
             use_wait_hook = slot_index in (base_slot, (base_slot + 3) % 6)
@@ -107,7 +112,8 @@ STRICT REQUIREMENTS:
    - **STRICT SAFETY**: Every topic and `search_query` MUST be 100% G-rated, family-friendly, and YouTube-safe (NO nudity, NO graphic anatomy/surgery/blood, NO violence, NO people/crowds/sports).
    - **CRITICAL FOR BEAT 1 (OPENING HOOK)**: `search_query` MUST be vivid, dramatic real-world nature/space/science/lab footage (e.g. "volcano lava eruption", "lightning storm earth", "ocean coral reef", "sun solar flare", "aurora borealis space", "water droplet microgravity"). NEVER choose queries that return title screens, slides, text graphics, diagrams, or people talking.
    - Every beat's `search_query` (2-3 concrete English nouns/verbs) MUST directly match the physical object or phenomenon being spoken about in that exact beat.
-5. **Metadata**:
+5. **Strict Scientific Fact-Check**: Double-check EVERY number, unit, cause-and-effect claim, and scientific term before outputting. Zero myths, zero exaggerations, zero hallucinations—100% peer-reviewed scientific accuracy!
+6. **Metadata**:
    - `title`: Catchy YouTube Shorts title under 75 chars, ending with #shorts
    - `description`: 2-sentence summary + relevant hashtags: {" ".join(channel.default_hashtags)}
    - `tags`: 6-10 relevant SEO keywords
