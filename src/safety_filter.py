@@ -41,7 +41,11 @@ class VisualSafetyFilter:
         self.client = genai.Client(api_key=api_key) if api_key else None
 
     def is_clip_safe_and_relevant(
-        self, video_path: Path, topic_query: str, work_dir: Path
+        self,
+        video_path: Path,
+        topic_query: str,
+        work_dir: Path,
+        allow_animations: bool = False,
     ) -> tuple[bool, str]:
         """Return (True, 'ok') only if the clip frame is 100% YouTube-safe and visual."""
         if self.client is None:
@@ -53,6 +57,16 @@ class VisualSafetyFilter:
 
         try:
             img_bytes = frame_path.read_bytes()
+            if allow_animations:
+                rule_4 = (
+                    "4. Confusing abstract geometric wireframes, meaningless fractals, or low-quality clutter "
+                    "(Clear, easy-to-understand educational Earth/science animations OR real camera footage ARE ALLOWED)."
+                )
+            else:
+                rule_4 = (
+                    "4. Abstract geometric lines, wireframes, 2D cartoons, CGI simulations, fractals, or shapes "
+                    "on a black background (MUST be real-world camera footage or real telescope/microscope imagery)."
+                )
             prompt = (
                 f"Inspect this video frame intended for a family-friendly YouTube Science Short "
                 f"about '{topic_query}'.\n"
@@ -60,7 +74,7 @@ class VisualSafetyFilter:
                 "1. Nudity, suggestive/sexual content, exposed skin/swimwear, gore, blood, or medical surgery.\n"
                 "2. Mostly text on a solid/plain background, title card, slide, book page, or logo screen.\n"
                 "3. Random people talking, crowds, sports stadium, news studio, or political speech.\n"
-                "4. Abstract geometric lines, wireframes, 2D cartoons, CGI simulations, fractals, or shapes on a black background (MUST be real-world camera footage or real telescope/microscope imagery).\n"
+                f"{rule_4}\n"
                 "5. Completely blank/black frame.\n"
                 "Return ONLY JSON: {\"safe\": true/false, \"reason\": \"short reason\"}"
             )
