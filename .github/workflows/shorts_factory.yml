@@ -16,6 +16,8 @@ on:
           - chemistry
           - biology
           - general_science
+          - earth_science
+          - astronomy
       dry_run:
         description: "Dry run (skip YouTube upload)"
         required: true
@@ -37,6 +39,8 @@ jobs:
           - chemistry
           - biology
           - general_science
+          - earth_science
+          - astronomy
 
     steps:
       - name: Check target channel filter
@@ -103,6 +107,12 @@ jobs:
           GENERAL_SCIENCE_YT_CLIENT_ID: ${{ secrets.GENERAL_SCIENCE_YT_CLIENT_ID }}
           GENERAL_SCIENCE_YT_CLIENT_SECRET: ${{ secrets.GENERAL_SCIENCE_YT_CLIENT_SECRET }}
           GENERAL_SCIENCE_YT_REFRESH_TOKEN: ${{ secrets.GENERAL_SCIENCE_YT_REFRESH_TOKEN }}
+          EARTH_SCIENCE_YT_CLIENT_ID: ${{ secrets.EARTH_SCIENCE_YT_CLIENT_ID }}
+          EARTH_SCIENCE_YT_CLIENT_SECRET: ${{ secrets.EARTH_SCIENCE_YT_CLIENT_SECRET }}
+          EARTH_SCIENCE_YT_REFRESH_TOKEN: ${{ secrets.EARTH_SCIENCE_YT_REFRESH_TOKEN }}
+          ASTRONOMY_YT_CLIENT_ID: ${{ secrets.ASTRONOMY_YT_CLIENT_ID }}
+          ASTRONOMY_YT_CLIENT_SECRET: ${{ secrets.ASTRONOMY_YT_CLIENT_SECRET }}
+          ASTRONOMY_YT_REFRESH_TOKEN: ${{ secrets.ASTRONOMY_YT_REFRESH_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python -m src.main --once ${{ matrix.channel }} --force
