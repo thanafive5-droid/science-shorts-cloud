@@ -60,7 +60,8 @@ class VisualSafetyFilter:
                 "1. Nudity, suggestive/sexual content, exposed skin/swimwear, gore, blood, or medical surgery.\n"
                 "2. Mostly text on a solid/plain background, title card, slide, book page, or logo screen.\n"
                 "3. Random people talking, crowds, sports stadium, news studio, or political speech.\n"
-                "4. Completely blank/black frame.\n"
+                "4. Abstract geometric lines, wireframes, 2D cartoons, CGI simulations, fractals, or shapes on a black background (MUST be real-world camera footage or real telescope/microscope imagery).\n"
+                "5. Completely blank/black frame.\n"
                 "Return ONLY JSON: {\"safe\": true/false, \"reason\": \"short reason\"}"
             )
             resp = self.client.models.generate_content(
