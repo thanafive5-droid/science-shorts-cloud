@@ -33,7 +33,7 @@ WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,90,90,380,1
+Style: Default,DejaVu Sans,74,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,2,2,80,80,380,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -95,44 +95,61 @@ def _choose_action_offset(clip_dur: float, cut_dur: float, pass_num: int) -> flo
 
 
 def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
-    """Synthesize a warm, copyright-free ambient science synth pad BGM track."""
+    """Synthesize a clear, modern, copyright-free science Shorts electronic BGM track."""
     sample_rate = 22050
     total_samples = int(duration_sec * sample_rate)
-    # Warm ambient chord progression (Hz): Am9 -> Fmaj7 -> Cmaj7 -> G6
+    # Modern electronic science progression (Hz): Am -> F -> C -> G
     chords = [
-        (220.0, 261.63, 329.63, 392.0),   # Am7
-        (174.61, 220.0, 261.63, 329.63),  # Fmaj7
-        (130.81, 196.0, 246.94, 329.63),  # Cmaj7
-        (196.0, 246.94, 293.66, 329.63),  # G6
+        (110.0, 220.0, 261.63, 329.63),  # Am
+        (87.31, 174.61, 220.0, 261.63),  # F
+        (130.81, 196.0, 261.63, 329.63), # C
+        (98.0, 196.0, 246.94, 293.66),   # G
+    ]
+    arpeggio_notes = [
+        (440.0, 523.25, 659.25, 523.25),
+        (349.23, 440.0, 523.25, 440.0),
+        (392.0, 523.25, 659.25, 783.99),
+        (392.0, 493.88, 587.33, 493.88),
     ]
     chord_dur = 4.0
-    fade_in = int(0.8 * sample_rate)
-    fade_out = int(1.2 * sample_rate)
+    beat_dur = 0.5  # 120 BPM subtle pulse
+    fade_in = int(0.4 * sample_rate)
+    fade_out = int(1.0 * sample_rate)
     buf = array.array("h")
     two_pi = 2.0 * math.pi
 
     for i in range(total_samples):
         t = i / sample_rate
         chord_idx = int(t // chord_dur) % len(chords)
-        freqs = chords[chord_idx]
+        bass_f, f1, f2, f3 = chords[chord_idx]
+        arp_freqs = arpeggio_notes[chord_idx]
+
+        # 1. Warm pulsing synth pad
         local_t = t % chord_dur
+        chord_env = min(1.0, local_t / 0.25) * min(1.0, (chord_dur - local_t) / 0.25)
+        pad = (
+            math.sin(two_pi * f1 * t)
+            + 0.85 * math.sin(two_pi * f2 * t)
+            + 0.75 * math.sin(two_pi * f3 * t)
+        ) / 2.6
 
-        # Smooth envelope per chord + gentle pulsing LFO for modern science vibe
-        chord_env = min(1.0, local_t / 0.45) * min(1.0, (chord_dur - local_t) / 0.45)
-        lfo = 0.78 + 0.22 * math.sin(two_pi * 1.5 * t)
+        # 2. Rhythmic 120 BPM bass pulse + soft plucked arpeggio melody
+        beat_pos = (t % beat_dur) / beat_dur
+        pulse_env = math.exp(-4.5 * beat_pos)
+        bass = math.sin(two_pi * bass_f * t) * (0.45 + 0.55 * pulse_env)
 
-        val = 0.0
-        for f in freqs:
-            val += math.sin(two_pi * f * t) + 0.18 * math.sin(two_pi * (f * 2.0) * t)
-        val = (val / (len(freqs) * 1.25)) * chord_env * lfo
+        arp_idx = int(t / beat_dur) % len(arp_freqs)
+        arp_f = arp_freqs[arp_idx]
+        arp = math.sin(two_pi * arp_f * t) * math.exp(-7.0 * beat_pos) * 0.45
 
-        # Global fade-in / fade-out
+        val = (0.45 * pad * chord_env) + (0.35 * bass) + arp
+
         if i < fade_in:
             val *= i / fade_in
         elif i > total_samples - fade_out:
             val *= max(0.0, (total_samples - i) / fade_out)
 
-        sample = int(max(-1.0, min(1.0, val * 0.65)) * 32767)
+        sample = int(max(-1.0, min(1.0, val * 0.85)) * 32767)
         buf.append(sample)
 
     with wave.open(str(wav_path), "wb") as wf:
@@ -288,7 +305,7 @@ class VideoEditor:
                 "-vf",
                 f"ass='{ass_escaped}'",
                 "-filter_complex",
-                "[1:a]volume=1.0[vo];[2:a]volume=0.14[bgm];[vo][bgm]amix=inputs=2:duration=longest:dropout_transition=2[aout]",
+                "[1:a]volume=1.0[vo];[2:a]volume=0.28[bgm];[vo][bgm]amix=inputs=2:duration=first:normalize=0:dropout_transition=2[aout]",
                 "-map",
                 "0:v:0",
                 "-map",
