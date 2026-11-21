@@ -69,14 +69,19 @@ class ScriptGenerator:
 
         if use_wait_hook:
             hook_rule = (
-                '2. **Hook (Beat 1)**: MUST begin literally with the word **"Wait,"** or **"Wait—"** '
-                '(e.g., "Wait—why does...", "Wait, have you ever wondered why...", "Wait, this actually happens when...") '
-                "to create an instant pattern-interrupt in the first 2 seconds."
+                '2. **Scroll-Stopping Hook (Beat 1)**: MUST begin literally with **"Wait,"** or **"Wait—"** '
+                'followed immediately by a shocking, mind-bending curiosity gap '
+                '(e.g., "Wait—there is a metal that explodes the second it touches water.", '
+                '"Wait, your body is literally glowing right now—here is why you cannot see it.") '
+                "to freeze the viewer's thumb in the first 2 seconds."
             )
         else:
             hook_rule = (
-                '2. **Hook (Beat 1)**: Grab attention in the first 2 seconds with a shocking fact, paradox, '
-                'or bold question. Do NOT start with "Wait", "Did you know", or "Hello guys".'
+                '2. **Scroll-Stopping Hook (Beat 1)**: Open with an irresistible, counter-intuitive claim, '
+                'impossible-sounding fact, or urgent mystery in under 8 words '
+                '(e.g., "This frog freezes completely solid—and wakes up alive.", '
+                '"One teaspoon of this star weighs a billion tons."). '
+                'NEVER sound like a textbook, and NEVER start with "Wait", "Did you know", or "Hello guys".'
             )
 
         system_instruction = (
