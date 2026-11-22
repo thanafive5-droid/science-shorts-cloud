@@ -4,6 +4,34 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+try:
+    QUOTA_TZ: timezone | ZoneInfo = ZoneInfo("America/Los_Angeles")
+except ZoneInfoNotFoundError:
+    QUOTA_TZ = timezone(timedelta(hours=-8))
+
+
+def current_quota_day_start_utc(now_utc: datetime | None = None) -> datetime:
+    """Return 00:00:00 of the current Google quota day (Pacific Time) converted to UTC."""
+    now = now_utc or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    local_pt = now.astimezone(QUOTA_TZ)
+    start_pt = local_pt.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start_pt.astimezone(timezone.utc)
+
+
+def next_quota_reset_utc(now_utc: datetime | None = None) -> datetime:
+    """Return 00:05:00 of the next Google quota day (Pacific Time + 5m buffer) in UTC."""
+    now = now_utc or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    local_pt = now.astimezone(QUOTA_TZ)
+    next_day_pt = (local_pt + timedelta(days=1)).replace(
+        hour=0, minute=5, second=0, microsecond=0
+    )
+    return next_day_pt.astimezone(timezone.utc)
 
 
 class FactoryDatabase:
@@ -51,6 +79,13 @@ class FactoryDatabase:
                     clip_id TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     UNIQUE(channel_id, clip_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS quota_pauses (
+                    channel_id TEXT PRIMARY KEY,
+                    reason TEXT NOT NULL,
+                    paused_until TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
                 );
                 """
             )
@@ -132,15 +167,52 @@ class FactoryDatabase:
                 ),
             )
 
+    def set_quota_pause(self, channel_id: str, reason: str, paused_until: datetime) -> None:
+        """Pause a channel cleanly until the specified UTC time (e.g. next PT quota reset)."""
+        if paused_until.tzinfo is None:
+            paused_until = paused_until.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc).isoformat()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO quota_pauses (channel_id, reason, paused_until, updated_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (channel_id, reason, paused_until.isoformat(), now),
+            )
+
+    def get_active_pause(self, channel_id: str) -> tuple[str, str] | None:
+        """Return (reason, paused_until_iso) if paused; auto-delete expired pauses and return None."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT reason, paused_until FROM quota_pauses WHERE channel_id = ?",
+                (channel_id,),
+            ).fetchone()
+            if not row:
+                return None
+            until_dt = datetime.fromisoformat(row["paused_until"])
+            if until_dt.tzinfo is None:
+                until_dt = until_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) < until_dt:
+                return row["reason"], row["paused_until"]
+            conn.execute("DELETE FROM quota_pauses WHERE channel_id = ?", (channel_id,))
+            return None
+
     def can_post_now(
         self,
         channel_id: str,
         min_interval_hours: float = 3.5,
         max_per_24h: int = 6,
+        check_spacing: bool = True,
     ) -> tuple[bool, str]:
-        """Enforce <=6 uploads/24h and >=3.5h spacing per channel (protects YouTube quota)."""
+        """Enforce active quota pauses, <=6 uploads per Google PT quota day, and optional spacing."""
+        active_pause = self.get_active_pause(channel_id)
+        if active_pause:
+            reason, paused_until = active_pause
+            return False, f"quota_paused ({reason}; auto-resumes at {paused_until})"
+
         now = datetime.now(timezone.utc)
-        since_24h = (now - timedelta(hours=24)).isoformat()
+        quota_day_start = current_quota_day_start_utc(now).isoformat()
         with self._connect() as conn:
             rows = conn.execute(
                 """
@@ -148,14 +220,17 @@ class FactoryDatabase:
                 WHERE channel_id = ? AND status = 'uploaded' AND created_at >= ?
                 ORDER BY id DESC
                 """,
-                (channel_id, since_24h),
+                (channel_id, quota_day_start),
             ).fetchall()
 
-        count_24h = len(rows)
-        if count_24h >= max_per_24h:
-            return False, f"daily_cap_reached ({count_24h}/{max_per_24h} in last 24h)"
+        count = len(rows)
+        if count >= max_per_24h:
+            return (
+                False,
+                f"daily_quota_cap_reached ({count}/{max_per_24h} this Google quota day; auto-resumes after next PT midnight)",
+            )
 
-        if rows:
+        if check_spacing and rows:
             last_dt = datetime.fromisoformat(rows[0]["created_at"])
             if last_dt.tzinfo is None:
                 last_dt = last_dt.replace(tzinfo=timezone.utc)
@@ -163,7 +238,7 @@ class FactoryDatabase:
             if elapsed_hours < min_interval_hours:
                 return False, f"too_soon ({elapsed_hours:.2f}h < {min_interval_hours}h)"
 
-        return True, f"ok ({count_24h}/{max_per_24h} in last 24h)"
+        return True, f"ok ({count}/{max_per_24h} this quota day)"
 
     def get_status_summary(self) -> dict[str, Any]:
         """Return aggregate counts and latest posts for the /status endpoint."""
