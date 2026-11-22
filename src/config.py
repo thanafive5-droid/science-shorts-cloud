@@ -19,6 +19,12 @@ class ChannelConfig:
     youtube_handle: str = ""
     nasa_ratio: float = 0.0
     allow_animations: bool = True
+    tts_voice: str = "en-US-AndrewMultilingualNeural"
+    tts_rate: str = "+8%"
+    cut_min_sec: float = 2.2
+    cut_max_sec: float = 3.2
+    bgm_volume: float = 0.38
+    fallback_visual_queries: tuple[str, ...] = ()
 
 
 CHANNELS: dict[str, ChannelConfig] = {
@@ -33,6 +39,19 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=0,
         youtube_handle="@Quantum_Snap_YT_Physics",
+        nasa_ratio=0.0,
+        tts_voice="en-US-AndrewMultilingualNeural",
+        tts_rate="+10%",
+        cut_min_sec=2.1,
+        cut_max_sec=3.0,
+        bgm_volume=0.38,
+        fallback_visual_queries=(
+            "physics experiment magnet",
+            "laser light prism",
+            "water wave ripple",
+            "lightning electricity arc",
+            "superconductor laboratory",
+        ),
     ),
     "chemistry": ChannelConfig(
         id="chemistry",
@@ -45,6 +64,19 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=15,
         youtube_handle="@ReactionRush-v6u",
+        nasa_ratio=0.0,
+        tts_voice="en-US-BrianNeural",
+        tts_rate="+10%",
+        cut_min_sec=2.1,
+        cut_max_sec=3.0,
+        bgm_volume=0.40,
+        fallback_visual_queries=(
+            "chemical reaction laboratory",
+            "bismuth crystal rainbow",
+            "fire flame combustion",
+            "liquid nitrogen vapor",
+            "glowing mineral crystal",
+        ),
     ),
     "biology": ChannelConfig(
         id="biology",
@@ -58,6 +90,19 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=30,
         youtube_handle="@BioPulse-Daily-yt",
+        nasa_ratio=0.0,
+        tts_voice="en-US-AndrewMultilingualNeural",
+        tts_rate="+8%",
+        cut_min_sec=2.2,
+        cut_max_sec=3.2,
+        bgm_volume=0.36,
+        fallback_visual_queries=(
+            "coral reef underwater fish",
+            "bioluminescent ocean jellyfish",
+            "tropical rainforest wildlife",
+            "microscope cell organism",
+            "venus flytrap plant nature",
+        ),
     ),
     "general_science": ChannelConfig(
         id="general_science",
@@ -72,6 +117,18 @@ CHANNELS: dict[str, ChannelConfig] = {
         youtube_handle="@CoreScienceL-v4b",
         nasa_ratio=0.0,
         allow_animations=True,
+        tts_voice="en-US-GuyNeural",
+        tts_rate="+9%",
+        cut_min_sec=2.1,
+        cut_max_sec=3.0,
+        bgm_volume=0.38,
+        fallback_visual_queries=(
+            "science laboratory experiment",
+            "aurora borealis night sky",
+            "volcano lava nature",
+            "lightning storm clouds",
+            "ice crystal macro",
+        ),
     ),
     "earth_science": ChannelConfig(
         id="earth_science",
@@ -86,6 +143,18 @@ CHANNELS: dict[str, ChannelConfig] = {
         youtube_handle="@EarthSciPulse",
         nasa_ratio=0.0,
         allow_animations=True,
+        tts_voice="en-US-ChristopherNeural",
+        tts_rate="+8%",
+        cut_min_sec=2.2,
+        cut_max_sec=3.2,
+        bgm_volume=0.38,
+        fallback_visual_queries=(
+            "volcano lava eruption",
+            "glacier ice canyon",
+            "geological rock strata canyon",
+            "ocean storm waves cliff",
+            "amethyst quartz crystal cave",
+        ),
     ),
     "astronomy": ChannelConfig(
         id="astronomy",
@@ -100,6 +169,18 @@ CHANNELS: dict[str, ChannelConfig] = {
         youtube_handle="@AstroSnapDaily-r4l",
         nasa_ratio=0.5,
         allow_animations=True,
+        tts_voice="en-US-ChristopherNeural",
+        tts_rate="+6%",
+        cut_min_sec=2.3,
+        cut_max_sec=3.3,
+        bgm_volume=0.40,
+        fallback_visual_queries=(
+            "spiral galaxy nebula telescope",
+            "jupiter planet space",
+            "solar flare sun",
+            "supernova remnant stars",
+            "milky way night sky",
+        ),
     ),
 }
 
