@@ -8,7 +8,7 @@ from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from src.analytics_adapter import build_adaptation_prompt_block
+from src.analytics_adapter import build_adaptation_context
 from src.config import ChannelConfig
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,19 @@ class ScriptGenerator:
 
     def generate(self, channel: ChannelConfig, recent_topics: list[str]) -> ShortScript:
         """Generate a unique, complete, fast-paced script for the given channel with model fallback."""
-        avoid_block = "\n".join(f"- {t}" for t in recent_topics[:60]) if recent_topics else "None yet."
+        adaptation_block, published_titles = build_adaptation_context(channel.id, channel.youtube_handle)
+
+        merged_avoid: list[str] = []
+        seen_norm: set[str] = set()
+        for raw_topic in [*recent_topics, *published_titles]:
+            clean = str(raw_topic).strip()
+            norm = " ".join(clean.lower().split())
+            if clean and norm not in seen_norm:
+                seen_norm.add(norm)
+                merged_avoid.append(clean)
+            if len(merged_avoid) >= 90:
+                break
+        avoid_block = "\n".join(f"- {t}" for t in merged_avoid) if merged_avoid else "None yet."
 
         # Spread "Wait..." hooks naturally across different times of day & channels:
         # 3 days/week (Mon/Wed/Fri): 2 of 6 daily clips (spaced 12h apart)
@@ -98,13 +110,11 @@ class ScriptGenerator:
             "ending in a complete, punchy final sentence."
         )
 
-        adaptation_block = build_adaptation_prompt_block(channel.id, channel.youtube_handle)
-
         prompt = f"""
 Create ONE brand-new YouTube Short script for the **{channel.display_name}** channel.
 Channel niche: {channel.niche_description}
 
-TOPICS ALREADY USED (DO NOT REPEAT OR CLOSELY PARAPHRASE THESE):
+TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDERLYING PHENOMENON UNDER DIFFERENT WORDING, e.g., supercooled water, immortal jellyfish, quantum levitation, ferrofluid, Neptune diamond rain):
 {avoid_block}
 
 {adaptation_block}STRICT REQUIREMENTS:
@@ -117,7 +127,7 @@ TOPICS ALREADY USED (DO NOT REPEAT OR CLOSELY PARAPHRASE THESE):
    - Every beat's `search_query` (2-3 concrete English nouns/verbs) MUST directly match the physical object or phenomenon being spoken about in that exact beat.
 5. **Strict Scientific Fact-Check**: Double-check EVERY number, unit, cause-and-effect claim, and scientific term before outputting. Zero myths, zero exaggerations, zero hallucinations—100% peer-reviewed scientific accuracy!
 6. **Metadata**:
-   - `title`: Catchy YouTube Shorts title under 75 chars, ending with #shorts
+   - `title`: Crisp Title Case YouTube Shorts title under 65 chars, ending with #shorts, built around a concrete curiosity gap or surprising physical contrast. NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
    - `description`: 2-sentence summary + relevant hashtags: {" ".join(channel.default_hashtags)}
    - `tags`: 6-10 relevant SEO keywords
 
