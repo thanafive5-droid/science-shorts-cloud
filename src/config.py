@@ -17,7 +17,7 @@ class ChannelConfig:
     schedule_hours: tuple[int, ...]
     schedule_minute: int
     nasa_ratio: float = 0.2
-    allow_animations: bool = False
+    allow_animations: bool = True
 
 
 CHANNELS: dict[str, ChannelConfig] = {
@@ -66,7 +66,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=45,
         nasa_ratio=0.2,
-        allow_animations=False,
+        allow_animations=True,
     ),
     "earth_science": ChannelConfig(
         id="earth_science",
@@ -92,7 +92,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=20,
         nasa_ratio=0.5,
-        allow_animations=False,
+        allow_animations=True,
     ),
 }
 
