@@ -1,10 +1,12 @@
 """End-to-end automated pipeline for generating and publishing a single Science Short."""
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 import logging
 import shutil
 import uuid
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from src.config import CHANNELS, Settings
 from src.database import FactoryDatabase, next_quota_reset_utc
@@ -16,6 +18,11 @@ from src.video_editor import VideoEditor
 from src.youtube_uploader import YouTubeUploader
 
 logger = logging.getLogger(__name__)
+
+try:
+    ICT_TZ: timezone | ZoneInfo = ZoneInfo("Asia/Bangkok")
+except ZoneInfoNotFoundError:
+    ICT_TZ = timezone(timedelta(hours=7))
 
 
 class ShortsPipeline:
@@ -45,6 +52,18 @@ class ShortsPipeline:
     ) -> None:
         """Execute one full Short creation & upload cycle for a channel."""
         channel = CHANNELS[channel_id]
+        if not force and channel.preferred_ict_hours:
+            now_ict = datetime.now(ICT_TZ)
+            if now_ict.hour not in channel.preferred_ict_hours:
+                logger.info(
+                    "Skipping [%s]: %02d:%02d ICT is outside channel peak slots %s (0 quota used)",
+                    channel_id,
+                    now_ict.hour,
+                    now_ict.minute,
+                    channel.preferred_ict_hours,
+                )
+                return
+
         allowed, reason = self.db.can_post_now(
             channel_id,
             min_interval_hours=channel.min_interval_hours,
