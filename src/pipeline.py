@@ -44,12 +44,17 @@ class ShortsPipeline:
         self, channel_id: str, force: bool = False, raise_on_error: bool = False
     ) -> None:
         """Execute one full Short creation & upload cycle for a channel."""
-        allowed, reason = self.db.can_post_now(channel_id, check_spacing=not force)
+        channel = CHANNELS[channel_id]
+        allowed, reason = self.db.can_post_now(
+            channel_id,
+            min_interval_hours=channel.min_interval_hours,
+            max_per_24h=channel.max_daily_uploads,
+            check_spacing=not force,
+        )
         if not allowed:
             logger.info("Skipping [%s]: %s (0 Gemini/YouTube quota used)", channel_id, reason)
             return
 
-        channel = CHANNELS[channel_id]
         job_id = f"{channel_id}_{uuid.uuid4().hex[:8]}"
         job_dir = self.settings.work_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
