@@ -246,43 +246,71 @@ class VideoEditor:
 
         for i, (clip_path, start_offset, dur) in enumerate(cut_plan):
             seg_path = trimmed_dir / f"seg_{i:03d}.mp4"
-            try:
+            is_image = clip_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
+            if is_image:
+                # Smooth Ken Burns zoom-in animation for high-res real photos
+                frames = max(30, int(round(dur * 30)))
+                vf_img = (
+                    "scale=1280:2276:force_original_aspect_ratio=increase,"
+                    "crop=1280:2276,"
+                    f"zoompan=z='min(zoom+0.0012,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=30,"
+                    "eq=contrast=1.08:saturation=1.22:brightness=0.02,format=yuv420p"
+                )
                 _run_ffmpeg(
                     [
-                        "-ss",
-                        f"{start_offset:.2f}",
+                        "-loop",
+                        "1",
                         "-t",
                         f"{dur:.2f}",
                         "-i",
                         str(clip_path),
                         "-an",
                         "-vf",
-                        vf_scale,
+                        vf_img,
                         "-c:v",
                         vcodec,
                         *vcodec_flags,
                         str(seg_path),
                     ]
                 )
-            except RuntimeError:
-                # Retry from 0.0s in case clip is shorter than start_offset
-                _run_ffmpeg(
-                    [
-                        "-stream_loop",
-                        "-1",
-                        "-t",
-                        f"{dur:.2f}",
-                        "-i",
-                        str(clip_path),
-                        "-an",
-                        "-vf",
-                        vf_scale,
-                        "-c:v",
-                        vcodec,
-                        *vcodec_flags,
-                        str(seg_path),
-                    ]
-                )
+            else:
+                try:
+                    _run_ffmpeg(
+                        [
+                            "-ss",
+                            f"{start_offset:.2f}",
+                            "-t",
+                            f"{dur:.2f}",
+                            "-i",
+                            str(clip_path),
+                            "-an",
+                            "-vf",
+                            vf_scale,
+                            "-c:v",
+                            vcodec,
+                            *vcodec_flags,
+                            str(seg_path),
+                        ]
+                    )
+                except RuntimeError:
+                    # Retry from 0.0s in case clip is shorter than start_offset
+                    _run_ffmpeg(
+                        [
+                            "-stream_loop",
+                            "-1",
+                            "-t",
+                            f"{dur:.2f}",
+                            "-i",
+                            str(clip_path),
+                            "-an",
+                            "-vf",
+                            vf_scale,
+                            "-c:v",
+                            vcodec,
+                            *vcodec_flags,
+                            str(seg_path),
+                        ]
+                    )
             concat_lines.append(f"file '{seg_path.as_posix()}'\n")
 
         concat_list_path.write_text("".join(concat_lines), encoding="utf-8")
