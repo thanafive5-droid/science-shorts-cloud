@@ -309,10 +309,17 @@ class VideoEditor:
         concat_list_path = work_dir / "concat.txt"
         concat_lines: list[str] = []
 
+        # 1 of 3 subtle natural cinematic color grades so consecutive uploads never share identical histograms
+        color_eq = random.SystemRandom().choice([
+            "eq=contrast=1.07:saturation=1.22:brightness=0.02",
+            "eq=contrast=1.10:saturation=1.16:brightness=0.01:gamma=0.98",
+            "eq=contrast=1.06:saturation=1.28:brightness=0.02:gamma=1.02",
+        ])
+
         # Cinematic color pop + sharpness + 1080x1920 framing so every clip looks crisp & vibrant
         vf_scale = (
             "scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,eq=contrast=1.08:saturation=1.24:brightness=0.02,"
+            f"crop=1080:1920,{color_eq},"
             "unsharp=5:5:0.75:3:3:0.35,fps=30,format=yuv420p"
         )
 
@@ -331,7 +338,7 @@ class VideoEditor:
                     "scale=1280:2276:force_original_aspect_ratio=increase,"
                     "crop=1280:2276,"
                     f"zoompan=z='{zoom_expr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=30,"
-                    "eq=contrast=1.08:saturation=1.22:brightness=0.02,format=yuv420p"
+                    f"{color_eq},format=yuv420p"
                 )
                 _run_ffmpeg(
                     [
@@ -447,6 +454,8 @@ class VideoEditor:
                 "-b:a",
                 "192k",
                 "-shortest",
+                "-map_metadata",
+                "-1",
                 "-movflags",
                 "+faststart",
                 str(output_path),
