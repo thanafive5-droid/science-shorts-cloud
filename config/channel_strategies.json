@@ -1,64 +1,85 @@
 {
   "physics": {
     "focus_topics": [
-      "tactile everyday physics paradoxes",
-      "counterintuitive material strength & fluid dynamics",
-      "extreme gravity, light & sound phenomena"
+      "tactile visible physics demonstrations (magnets in copper, acoustic levitation, Leidenfrost, ferrofluid-like physical shockers)",
+      "impossible material strength, fluid dynamics, wave & optical illusions",
+      "high-stakes cosmic limits (speed of light, extreme gravity, sound waves)"
     ],
     "avoid_angles": [
-      "abstract invisible quantum field jargon without vivid visuals"
+      "abstract invisible quantum jargon without dramatic physical visuals",
+      "neuroscience or psychology topics unrelated to physical demonstrations",
+      "lecture titles starting with 'The Physics of...'",
+      "repeating quantum levitation, superconductors, Prince Rupert's Drop, or Mpemba effect"
     ],
-    "hook_style": "Use 'The [Concrete Object] Paradox' or impossible-sounding physical contrast in title & beat 1",
-    "extra_directive": "Prioritize phenomena viewers can instantly visualize (glass, ice, magnets, water, extreme pressure) over abstract equations."
+    "hook_style": "Use tactile contrast titles like 'The [Concrete Object] That [Impossible Action]!' or 'How [Force] [Shocking Verb] [Object]!'",
+    "extra_directive": "Prioritize visible physical effects viewers can immediately see bend, levitate, shatter, spike, or glow in the first 2 seconds."
   },
   "chemistry": {
     "focus_topics": [
-      "extreme thermal/phase-change contrasts (hot ice, liquid metals, supercooled liquids)",
-      "dramatic visible reactions and strange elements",
-      "everyday materials with shocking hidden chemistry"
+      "extreme visible thermal or phase-change contrasts (burning-hot ice, rainbow crystal metals, liquid metals)",
+      "dramatic fiery, luminous, hydrophobic, or self-healing material transformations",
+      "shocking hidden chemistry inside everyday solids and liquids"
     ],
     "avoid_angles": [
-      "vague 'changes color' titles without extreme stakes"
+      "invisible gases or invisible timers that look empty on camera",
+      "mild 'changes color' phrasing without extreme stakes",
+      "overused 'world's strongest acid' clichés"
     ],
-    "hook_style": "Use extreme physical contrast titles like 'The [Substance] That [Impossible Action]!'",
-    "extra_directive": "Lead with the most extreme sensory contrast (burning cold, metal that melts in your hand, liquid that climbs walls)."
+    "hook_style": "Use extreme visual contrast titles: 'The [Liquid/Metal/Material] That [Impossible Visual Action]!'",
+    "extra_directive": "NEVER choose invisible phenomena. Every topic must produce a striking, colorful, fiery, crystalline, or physically bizarre visual transformation."
   },
   "biology": {
     "focus_topics": [
-      "extreme ocean and wildlife superpowers (camouflage, regeneration, bioluminescence)",
-      "weird real survival adaptations with vivid nature footage"
+      "deep-ocean predators, camouflage masters, and marine bioluminescence",
+      "extreme insect weapons and survival superpowers (boiling sprays, supersonic snaps, regeneration)",
+      "carnivorous, resurrection, and extreme-environment plants"
     ],
     "avoid_angles": [
-      "confusing metaphors or clickbait-sounding exaggerations in titles"
+      "human body organs, digestion, brain, throat, or medical anatomy (4x-6x lower views and moderation risk)",
+      "confusing metaphors or hyperbolic clickbait titles ('flies to the moon')",
+      "repeating immortal jellyfish / animals that never grow old"
     ],
-    "hook_style": "Spotlight one concrete creature's superpower: 'The [Habitat]'s Ultimate [Superpower]!'",
-    "extra_directive": "Keep titles literal, vivid, and anchored to a real animal, plant, or ocean organism."
+    "hook_style": "Spotlight one concrete organism's real superpower: 'The Ocean's [Archetype]' or 'The [Creature/Plant] That [Shocking Real Action]!'",
+    "extra_directive": "Focus 100% on wild animals, marine life, insects, microbes, and extreme plants with concrete shocking comparisons (e.g., louder than a jet, fires boiling liquid)."
   },
   "general_science": {
     "focus_topics": [
-      "gravity-defying liquids and impossible-looking everyday physics/nature",
-      "high-curiosity natural anomalies and surprising engineering breakthroughs"
+      "rule-breaking physical wonders (defying gravity, breaking light speed in water, sonoluminescence)",
+      "jaw-dropping prehistoric and planetary science shocks (natural nuclear reactors, ancient atmospheric events)",
+      "counterintuitive survival or danger physics myth-busts (liquid nitrogen Leidenfrost, extreme materials)"
     ],
     "avoid_angles": [
-      "textbook 'Why X happens' titles"
+      "dry textbook titles ending in 'Explained' or starting with 'Why Water...'",
+      "mundane everyday gadget trivia or vague 'also a gas' phrasing",
+      "repeating supercooled water, gallium melting in hand, or Mpemba effect"
     ],
-    "hook_style": "Use curiosity-gap 'The [Thing] That [Defies/Breaks Rule]!' titles instead of 'Why...'",
-    "extra_directive": "Avoid school-lesson phrasing. Frame every topic as a baffling real-world anomaly revealed in 20 seconds."
+    "hook_style": "Use rule-breaking curiosity titles: 'The [Thing] That [Breaks Famous Law]!', 'Earth's [Shocking Hidden Fact]', or 'Can [Ordinary Thing] Create [Extreme Thing]?'",
+    "extra_directive": "Frame every topic as a jaw-dropping real anomaly or broken rule of nature—never like a school textbook explanation."
   },
   "earth_science": {
     "focus_topics": [
-      "deep Earth mysteries, ancient geological time capsules, extreme volcanoes, ocean trenches"
+      "hidden deep-Earth structures (LLSVPs, underground oceans, ancient mantle anomalies)",
+      "extreme volcanic, tectonic, glacial, and deep-trench phenomena (underwater waterfalls, blue-lava volcanoes, mega-caverns)",
+      "epic prehistoric Earth events and bizarre geological time capsules"
     ],
-    "avoid_angles": [],
-    "hook_style": "default",
-    "extra_directive": ""
+    "avoid_angles": [
+      "dull textbook geography definitions or generic weather reports",
+      "flat lowercase declarative titles without a curiosity hook"
+    ],
+    "hook_style": "Use epic Title Case curiosity titles: 'Earth's Hidden [Extreme Feature]!', 'The Place on Earth Where [Impossible Geological Event]!', or 'Earth Built Its Own [Shocking Thing]'",
+    "extra_directive": "Lead Beat 1 with dramatic real geological cinematography (lava, deep canyons, glaciers, lightning supercells, crystals) and make Earth feel alien and awe-inspiring."
   },
   "astronomy": {
     "focus_topics": [
-      "extreme exoplanets (metal rain, diamond rain, rogue worlds), black holes, neutron stars"
+      "extreme and lethal cosmic objects (magnetars, hypervelocity stars, vampire stars, tidal disruption events)",
+      "bizarre exoplanets (molten iron/glass rain, eyeball worlds, pitch-black planets, rogue worlds)",
+      "mind-bending deep-space mysteries (Boötes Void, neutron star mountains, gravitational lensing, JWST anomalies)"
     ],
-    "avoid_angles": [],
-    "hook_style": "Keep winning 'The Alien World / Star That [Extreme Phenomenon]' framing",
-    "extra_directive": ""
+    "avoid_angles": [
+      "overdone basic trivia like Neptune diamond rain or 'more stars than grains of sand'",
+      "flat declarative titles starting with 'It...'"
+    ],
+    "hook_style": "Use high-stakes cosmic titles: 'The Alien World That [Extreme Phenomenon]', 'The Dead Star That [Lethal Action]', or 'The Most Terrifying [Object] in Space'",
+    "extra_directive": "Maximize cosmic scale and danger/wonder in the first 2 seconds; pair vivid deep-space NASA/observatory visuals with surprising astrophysical numbers."
   }
 }
