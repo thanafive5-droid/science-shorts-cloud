@@ -421,7 +421,18 @@ class MediaFetcher:
                     if chosen[idx] is not None:
                         break
                 if chosen[idx] is None:
-                    raise RuntimeError(f"Could not find any safe visual for beat {idx}: '{queries[idx]}'")
+                    verified_pool = [c for c in chosen if c is not None]
+                    if len(verified_pool) >= 3:
+                        fallback_pick = verified_pool[(idx + 2) % len(verified_pool)]
+                        chosen[idx] = fallback_pick
+                        logger.warning(
+                            "Beat %d ('%s') reused verified safe visual %s after fallback passes",
+                            idx,
+                            queries[idx],
+                            fallback_pick[2],
+                        )
+                    else:
+                        raise RuntimeError(f"Could not find any safe visual for beat {idx}: '{queries[idx]}'")
 
         downloaded = [c[0] for c in chosen if c is not None]
         newly_used_ids = [c[2] for c in chosen if c is not None]
