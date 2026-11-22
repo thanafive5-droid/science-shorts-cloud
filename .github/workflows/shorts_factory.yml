@@ -26,6 +26,14 @@ on:
         options:
           - "false"
           - "true"
+      force:
+        description: "Bypass spacing guard (still respects daily quota & active pauses)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   produce-and-upload:
@@ -114,7 +122,7 @@ jobs:
           ASTRONOMY_YT_CLIENT_SECRET: ${{ secrets.ASTRONOMY_YT_CLIENT_SECRET }}
           ASTRONOMY_YT_REFRESH_TOKEN: ${{ secrets.ASTRONOMY_YT_REFRESH_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event.inputs.force || 'false' }}" = "true" ]; then
             python -m src.main --once ${{ matrix.channel }} --force
           else
             python -m src.main --once ${{ matrix.channel }}
