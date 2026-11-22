@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 from src.config import CHANNELS, Settings
-from src.database import FactoryDatabase
+from src.database import FactoryDatabase, next_quota_reset_utc
 from src.media_fetcher import MediaFetcher
 from src.safety_filter import VisualSafetyFilter
 from src.script_generator import ScriptGenerator
@@ -44,11 +44,10 @@ class ShortsPipeline:
         self, channel_id: str, force: bool = False, raise_on_error: bool = False
     ) -> None:
         """Execute one full Short creation & upload cycle for a channel."""
-        if not force:
-            allowed, reason = self.db.can_post_now(channel_id)
-            if not allowed:
-                logger.info("Skipping [%s] scheduled tick: %s (0 quota used)", channel_id, reason)
-                return
+        allowed, reason = self.db.can_post_now(channel_id, check_spacing=not force)
+        if not allowed:
+            logger.info("Skipping [%s]: %s (0 Gemini/YouTube quota used)", channel_id, reason)
+            return
 
         channel = CHANNELS[channel_id]
         job_id = f"{channel_id}_{uuid.uuid4().hex[:8]}"
@@ -135,16 +134,37 @@ class ShortsPipeline:
                 logger.info("=== Completed job [%s] ===", job_id)
 
             except Exception as exc:
-                logger.exception("Job [%s] failed: %s", job_id, exc)
-                self.db.record_post(
-                    channel_id=channel_id,
-                    topic=topic,
-                    title=title,
-                    status="failed",
-                    error_message=str(exc)[:500],
+                err_lower = str(exc).lower()
+                is_quota_err = any(
+                    tok in err_lower
+                    for tok in ("quotaexceeded", "uploadlimitexceeded", "resource_exhausted", "429")
                 )
-                if raise_on_error:
-                    raise
+                if is_quota_err:
+                    resume_at = next_quota_reset_utc()
+                    self.db.set_quota_pause(channel_id, reason=str(exc)[:160], paused_until=resume_at)
+                    self.db.record_post(
+                        channel_id=channel_id,
+                        topic=topic,
+                        title=title,
+                        status="quota_paused",
+                        error_message=str(exc)[:500],
+                    )
+                    logger.warning(
+                        "Quota exhausted for [%s] — paused cleanly until %s UTC (auto-resumes after daily reset)",
+                        channel_id,
+                        resume_at.isoformat(),
+                    )
+                else:
+                    logger.exception("Job [%s] failed: %s", job_id, exc)
+                    self.db.record_post(
+                        channel_id=channel_id,
+                        topic=topic,
+                        title=title,
+                        status="failed",
+                        error_message=str(exc)[:500],
+                    )
+                    if raise_on_error:
+                        raise
             finally:
                 # Always clean up temporary video files to keep cloud disk free
                 shutil.rmtree(job_dir, ignore_errors=True)
