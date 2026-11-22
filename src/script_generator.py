@@ -2,6 +2,7 @@
 
 import json
 import logging
+import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from google import genai
@@ -34,11 +35,31 @@ class ShortScript:
 
     @property
     def full_narration(self) -> str:
-        text = " ".join(beat.narration.strip() for beat in self.beats if beat.narration.strip())
-        cta = "Don't forget to like and subscribe!"
-        if "like and subscribe" not in text.lower():
-            text = f"{text} {cta}"
-        return text
+        return " ".join(beat.narration.strip() for beat in self.beats if beat.narration.strip())
+
+
+NARRATIVE_ARCS: tuple[tuple[str, str], ...] = (
+    (
+        "Myth-Bust",
+        "Shatter a widespread misconception in Beat 1, escalate with real scientific proof in the middle beats, and deliver the surprising real mechanism at the end.",
+    ),
+    (
+        "Extreme Human-Scale Comparison",
+        "Anchor the phenomenon to a vivid, jaw-dropping everyday human-scale comparison right away (e.g., louder than a jet engine, hotter than the Sun's surface, heavier than a skyscraper).",
+    ),
+    (
+        "Mystery-to-Reveal (Open Loop)",
+        "Open an intriguing visual mystery in Beat 1 without giving away the cause yet, raise the stakes around Beat 5, and withhold the shocking payoff until the final 2 beats.",
+    ),
+    (
+        "High-Stakes 'What If / Survival'",
+        "Drop the viewer straight inside the extreme condition in Beat 1 (e.g., 'If you dropped this in water...', 'If you stood here for one second...') and trace the real physics/biology second by second.",
+    ),
+    (
+        "Seamless Curiosity Loop",
+        "Deliver a complete, satisfying scientific reveal, and craft the final 4–6 words so their cadence naturally tempts viewers to rewatch or comment while standing cleanly on their own.",
+    ),
+)
 
 
 class ScriptGenerator:
@@ -102,33 +123,37 @@ class ScriptGenerator:
                 'NEVER sound like a textbook, and NEVER start with "Wait", "Did you know", or "Hello guys".'
             )
 
+        arc_name, arc_guidance = random.SystemRandom().choice(NARRATIVE_ARCS)
+
         system_instruction = (
             "You are an elite YouTube Shorts producer specializing in viral, scientifically accurate "
-            "English-language science videos (~20 seconds long). "
-            "Your scripts have an irresistible 2-second hook, fast-paced 2-3 second visual cuts, "
-            "and ALWAYS deliver a complete, crystal-clear explanation of the main scientific idea "
-            "ending in a complete, punchy final sentence."
+            "English-language science videos (~24 to 28 seconds long). "
+            "Your scripts have an irresistible 1.5-second visual/audio hook, fast-paced 2-3 second hard cuts, "
+            "varied human storytelling structure (never repetitive AI phrasing), "
+            "and ALWAYS deliver a crystal-clear, memorable payoff."
         )
 
         prompt = f"""
 Create ONE brand-new YouTube Short script for the **{channel.display_name}** channel.
 Channel niche: {channel.niche_description}
+Chosen Narrative Arc for THIS video (follow strictly so consecutive videos never feel like a template): **{arc_name}** — {arc_guidance}
 
-TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDERLYING PHENOMENON UNDER DIFFERENT WORDING, e.g., supercooled water, immortal jellyfish, quantum levitation, ferrofluid, Neptune diamond rain):
+TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDERLYING PHENOMENON OR REUSE OPENING PHRASING FROM THESE):
 {avoid_block}
 
 {adaptation_block}STRICT REQUIREMENTS:
-1. **Length (~18-21 seconds total)**: STRICTLY **42 to 52 words TOTAL** (~18 to 21 seconds spoken). NEVER exceed 55 words. Zero fluff, zero filler, zero "like and subscribe" begging.
+1. **Length (~24–28 seconds total)**: STRICTLY **56 to 68 words TOTAL** (~23 to 28 seconds spoken). NEVER exceed 72 words. Zero fluff, zero filler, zero "like and subscribe" begging.
 {hook_rule}
-3. **Mid-Video Retention Reset & Engagement Closer**: Around Beat 4 (~second 9–10), inject a sharp micro-twist ("But here is the wild part...", "Until one thing flips...", "And that is when...") to reset viewer attention. On the final beat, deliver a crisp, jaw-dropping final reveal or punchy 4-to-6-word curiosity question that sparks comments or rewatches (e.g., "Would you dare touch it?" or "And it is still growing today."). NEVER say "Don't forget to like and subscribe", "follow for more", or "thanks for watching".
-4. **Fast-Paced Relevant & 100% Family-Safe Real-Video Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~5-7 words each = ~2.1-2.8 seconds per cut).
+3. **Mid-Video Retention Reset & Engagement Closer**: Around Beat 5 (~second 9–11), inject a sharp micro-twist ("But here is the wild part...", "Until one thing flips...", "And that is when...") to reset viewer attention. On the final beat, deliver a crisp, jaw-dropping final reveal or punchy 4-to-6-word curiosity question that sparks comments or rewatches (e.g., "Would you dare touch it?" or "And it is still growing today."). NEVER say "Don't forget to like and subscribe", "follow for more", or "thanks for watching".
+4. **Fast-Paced Relevant & 100% Family-Safe Real-Video Visuals (9 to 11 beats)**: Split the narration into **9 to 11 beats** (~6–7 words each = ~2.2–2.8 seconds per hard cut, well under 3 seconds).
+   - **ANTI-TEMPLATE / ANTI-OVERLAP**: Vary your sentence openings, vocabulary, and rhythm from the published titles above. NEVER start with clichés like "Believe it or not", "Did you know", "Today we are looking at", or "In the world of".
    - **STRICT SAFETY**: Every topic and `search_query` MUST be 100% G-rated, family-friendly, and YouTube-safe (NO nudity, NO graphic anatomy/surgery/blood, NO violence, NO people/crowds/sports).
    - **CRITICAL FOR BEAT 1 (OPENING HOOK)**: `search_query` MUST be vivid, dramatic real-world nature/space/science/lab footage (e.g. "volcano lava eruption", "lightning storm earth", "ocean coral reef", "sun solar flare", "aurora borealis space", "water droplet microgravity"). NEVER choose queries that return title screens, slides, text graphics, diagrams, or people talking.
    - Every beat's `search_query` (2-3 concrete English nouns/verbs) MUST directly match the physical object or phenomenon being spoken about in that exact beat.
    - NEVER use "subscribe button", "like and subscribe", "text", "diagram", or "person..." as `search_query` — even for the final closing beat, always use a vivid closing science/nature visual matching the topic.
 5. **Strict Scientific Fact-Check**: Double-check EVERY number, unit, cause-and-effect claim, and scientific term before outputting. Zero myths, zero exaggerations, zero hallucinations—100% peer-reviewed scientific accuracy!
 6. **Metadata**:
-   - `title`: Crisp Title Case YouTube Shorts title under 65 chars, ending with #shorts, built around a concrete curiosity gap or surprising physical contrast. NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
+   - `title`: Crisp natural keyword-rich Title Case YouTube Shorts title under 65 chars, ending with #shorts — optimized to trigger curiosity on the Shorts Feed AND rank in YouTube Search. NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
    - `description`: 2-sentence summary + relevant hashtags: {" ".join(channel.default_hashtags)}
    - `tags`: 6-10 relevant SEO keywords
 
