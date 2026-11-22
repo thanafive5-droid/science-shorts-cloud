@@ -3,6 +3,7 @@
 import json
 import logging
 import random
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from google import genai
@@ -124,6 +125,10 @@ class ScriptGenerator:
             )
 
         arc_name, arc_guidance = random.SystemRandom().choice(NARRATIVE_ARCS)
+        pool_tags = [h for h in channel.default_hashtags if h.lower() != "#shorts"]
+        sample_count = min(2, len(pool_tags))
+        chosen_tags = random.SystemRandom().sample(pool_tags, sample_count) if sample_count else []
+        desc_tags = " ".join([*chosen_tags, "#shorts"])
 
         system_instruction = (
             "You are an elite YouTube Shorts producer specializing in viral, scientifically accurate "
@@ -153,16 +158,16 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDER
    - NEVER use "subscribe button", "like and subscribe", "text", "diagram", or "person..." as `search_query` — even for the final closing beat, always use a vivid closing science/nature visual matching the topic.
 5. **Strict Scientific Fact-Check**: Double-check EVERY number, unit, cause-and-effect claim, and scientific term before outputting. Zero myths, zero exaggerations, zero hallucinations—100% peer-reviewed scientific accuracy!
 6. **Metadata**:
-   - `title`: Crisp natural keyword-rich Title Case YouTube Shorts title under 65 chars, ending with #shorts — optimized to trigger curiosity on the Shorts Feed AND rank in YouTube Search. NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
-   - `description`: 2-sentence summary + relevant hashtags: {" ".join(channel.default_hashtags)}
+   - `title`: Crisp natural keyword-rich Title Case YouTube Shorts title under 65 chars — **DO NOT include `#shorts` or any hashtag in the title** (YouTube automatically indexes 9:16 vertical videos as Shorts). NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
+   - `description`: 1–2 concise natural sentences + relevant hashtags: {desc_tags}
    - `tags`: 6-10 relevant SEO keywords
 
 Return ONLY valid JSON matching this exact schema:
 {{
   "topic": "short unique topic name",
-  "title": "Catchy title #shorts",
+  "title": "Catchy Human Title Without Hashtags",
   "description": "Short description with hashtags",
-  "tags": ["science", "physics", "shorts"],
+  "tags": ["science", "physics"],
   "beats": [
     {{"narration": "First punchy hook sentence.", "search_query": "concrete stock video query"}},
     ...
@@ -215,9 +220,10 @@ Return ONLY valid JSON matching this exact schema:
         if use_wait_hook and not beats[0].narration.lower().startswith("wait"):
             beats[0].narration = f"Wait— {beats[0].narration}"
 
+        clean_title = re.sub(r"\s*#shorts?\b", "", str(raw["title"]), flags=re.IGNORECASE).strip()[:95]
         script = ShortScript(
             topic=str(raw["topic"]).strip(),
-            title=str(raw["title"]).strip()[:95],
+            title=clean_title,
             description=str(raw.get("description", "")).strip(),
             tags=[str(t).strip() for t in raw.get("tags", [])][:12],
             beats=beats,
