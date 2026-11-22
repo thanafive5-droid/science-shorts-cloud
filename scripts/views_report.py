@@ -1,6 +1,8 @@
 """1-command live YouTube Shorts views report for all 6 channels (0 API quota, ~2s).
 
-Run: python scripts/views_report.py
+Run:
+  python scripts/views_report.py
+  python scripts/views_report.py --detail
 """
 
 import sys
@@ -21,11 +23,12 @@ CHANNEL_HANDLES = {
 
 
 def main() -> None:
+    detail = "--detail" in sys.argv
     print(f"{'CHANNEL':16s} | {'HANDLE':26s} | {'N':>3s} | {'MEDIAN':>7s} | {'RECENT':>7s} | {'PREV':>7s} | {'TREND':17s}")
     print("-" * 102)
     flagged: list[str] = []
     for cid, handle in CHANNEL_HANDLES.items():
-        perf = analyze_channel_performance(handle, limit=20)
+        perf = analyze_channel_performance(handle, limit=30 if detail else 20)
         flag = " <-- ADAPT!" if perf.trend == "dropping" else ""
         if perf.trend == "dropping":
             flagged.append(cid)
@@ -34,12 +37,18 @@ def main() -> None:
             f"{perf.median_views:7.0f} | {perf.recent_avg:7.0f} | {perf.prev_avg:7.0f} | "
             f"{perf.trend:17s}{flag}"
         )
-        if perf.top_shorts:
-            top = perf.top_shorts[0]
-            print(f"   TOP : {top.views:,} views | {top.title}")
-        if perf.bottom_shorts:
-            low = perf.bottom_shorts[-1]
-            print(f"   LOW : {low.views:,} views | {low.title}")
+        if detail:
+            for item in perf.top_shorts[:3]:
+                print(f"   TOP : {item.views:,} views | {item.title}")
+            for item in reversed(perf.bottom_shorts[-3:]):
+                print(f"   LOW : {item.views:,} views | {item.title}")
+        else:
+            if perf.top_shorts:
+                top = perf.top_shorts[0]
+                print(f"   TOP : {top.views:,} views | {top.title}")
+            if perf.bottom_shorts:
+                low = perf.bottom_shorts[-1]
+                print(f"   LOW : {low.views:,} views | {low.title}")
         strat = load_channel_strategy(cid)
         if strat.get("extra_directive") or strat.get("focus_topics"):
             print(f"   STRAT: {strat}")
