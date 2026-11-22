@@ -338,7 +338,7 @@ class MediaFetcher:
         output_dir.mkdir(parents=True, exist_ok=True)
         used_ids: set[str] = set(previously_used_ids or set())
         newly_used_ids: list[str] = []
-        max_nasa = max(1, round(len(queries) * nasa_ratio))
+        max_nasa = 0 if nasa_ratio <= 0 else max(1, round(len(queries) * nasa_ratio))
         nasa_count = 0
 
         # Batched Vision-verified passes:
@@ -428,6 +428,18 @@ class MediaFetcher:
                                 break
                         if chosen[idx] is not None:
                             break
+                if chosen[idx] is None:
+                    for vid, url in await self._search_wikimedia_photos(client, fallback_query):
+                        if vid not in used_ids:
+                            used_ids.add(vid)
+                            final_path = output_dir / f"raw_{idx:02d}.jpg"
+                            try:
+                                await self._download_file(client, url, final_path)
+                                chosen[idx] = (final_path, False, vid)
+                                break
+                            except Exception as exc:
+                                logger.warning("Fallback photo download failed for %s: %s", vid, exc)
+                                final_path.unlink(missing_ok=True)
                 if chosen[idx] is None:
                     verified_pool = [c for c in chosen if c is not None]
                     if nasa_ratio < 0.4:
