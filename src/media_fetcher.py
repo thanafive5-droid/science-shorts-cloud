@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 from pathlib import Path
 from typing import Optional
 import httpx
@@ -163,8 +164,8 @@ class MediaFetcher:
                 size = info.get("size") or 0
                 if url and mime in ("video/webm", "video/mp4") and 150_000 < size < 38_000_000:
                     scored.append((score, f"wm_{page_id}", url))
-            scored.sort(key=lambda x: x[0], reverse=True)
-            return [(vid, url) for _, vid, url in scored[:4]]
+            scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
+            return [(vid, url) for _, vid, url in scored[:6]]
         except Exception as exc:
             logger.warning("Wikimedia search failed for '%s': %s", query, exc)
             return []
@@ -195,9 +196,9 @@ class MediaFetcher:
                 score = _relevance_score(title_desc, query_terms)
                 candidates.append((score, ident))
 
-            candidates.sort(key=lambda x: x[0], reverse=True)
+            candidates.sort(key=lambda x: (x[0], random.random()), reverse=True)
             results: list[tuple[str, str]] = []
-            for _, ident in candidates[:3]:
+            for _, ident in candidates[:4]:
                 meta_resp = await client.get(
                     f"https://archive.org/metadata/{ident}/files",
                     headers={"User-Agent": USER_AGENT},
@@ -288,10 +289,12 @@ class MediaFetcher:
         fallback_query: str = "nature science",
         nasa_ratio: float = 0.2,
         allow_animations: bool = False,
-    ) -> list[Path]:
-        """Fetch diverse AI-verified clips respecting per-channel nasa_ratio and allow_animations."""
+        previously_used_ids: Optional[set[str]] = None,
+    ) -> tuple[list[Path], list[str]]:
+        """Fetch diverse AI-verified clips, skipping all previously_used_ids across past Shorts."""
         output_dir.mkdir(parents=True, exist_ok=True)
-        used_ids: set[str] = set()
+        used_ids: set[str] = set(previously_used_ids or set())
+        newly_used_ids: list[str] = []
         downloaded: list[Path] = []
         max_nasa = max(1, round(len(queries) * nasa_ratio))
         nasa_count = 0
@@ -302,7 +305,7 @@ class MediaFetcher:
                 # For Astronomy (nasa_ratio ~0.5), alternate preferring NASA on even beats up to max_nasa
                 prefer_nasa = nasa_ratio >= 0.4 and (idx % 2 == 0) and (nasa_count < max_nasa)
                 allow_nasa = nasa_count < max_nasa
-                clip_path, is_nasa = await self._fetch_verified_clip(
+                clip_path, is_nasa, chosen_vid = await self._fetch_verified_clip(
                     client,
                     idx,
                     safe_query,
@@ -315,16 +318,18 @@ class MediaFetcher:
                 )
                 if is_nasa:
                     nasa_count += 1
+                if chosen_vid:
+                    newly_used_ids.append(chosen_vid)
                 downloaded.append(clip_path)
 
         logger.info(
-            "Downloaded %d unique AI-verified clips (%d NASA / %d diverse non-NASA, allow_anim=%s)",
+            "Downloaded %d unique AI-verified clips (%d NASA / %d diverse non-NASA, skipped %d past clips)",
             len(downloaded),
             nasa_count,
             len(downloaded) - nasa_count,
-            allow_animations,
+            len(previously_used_ids or ()),
         )
-        return downloaded
+        return downloaded, newly_used_ids
 
     async def _fetch_verified_clip(
         self,
@@ -337,12 +342,14 @@ class MediaFetcher:
         allow_nasa: bool,
         prefer_nasa: bool = False,
         allow_animations: bool = False,
-    ) -> tuple[Path, bool]:
+    ) -> tuple[Path, bool, str]:
         """Download and visually verify candidates until one passes Gemini Vision safety & relevance."""
         search_queries = [query]
         if " " in query:
             search_queries.append(query.split()[0])
-        search_queries.append(DIVERSE_FALLBACK_QUERIES[idx % len(DIVERSE_FALLBACK_QUERIES)])
+        shuffled_fb = list(DIVERSE_FALLBACK_QUERIES)
+        random.shuffle(shuffled_fb)
+        search_queries.append(shuffled_fb[idx % len(shuffled_fb)])
         search_queries.append(fallback_query)
 
         for q in search_queries:
@@ -375,16 +382,18 @@ class MediaFetcher:
 
                 final_path = output_dir / f"raw_{idx:02d}{ext}"
                 temp_path.replace(final_path)
-                return final_path, is_nasa
+                return final_path, is_nasa, vid
 
         # Emergency fallback if every single diverse candidate failed
-        fb = SAFE_NASA_FALLBACK_QUERIES[idx % len(SAFE_NASA_FALLBACK_QUERIES)]
-        for vid, url in await self._search_nasa(client, fb):
-            if vid not in used_ids:
-                used_ids.add(vid)
-                final_path = output_dir / f"raw_{idx:02d}.mp4"
-                await self._download_file(client, url, final_path)
-                return final_path, True
+        fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
+        random.shuffle(fb_list)
+        for fb in fb_list:
+            for vid, url in await self._search_nasa(client, fb):
+                if vid not in used_ids:
+                    used_ids.add(vid)
+                    final_path = output_dir / f"raw_{idx:02d}.mp4"
+                    await self._download_file(client, url, final_path)
+                    return final_path, True, vid
 
         raise RuntimeError(f"Could not find any safe stock video for beat {idx}: '{query}'")
 
