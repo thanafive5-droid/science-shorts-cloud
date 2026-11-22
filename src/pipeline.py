@@ -3,6 +3,8 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
+import random
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -23,6 +25,14 @@ try:
     ICT_TZ: timezone | ZoneInfo = ZoneInfo("Asia/Bangkok")
 except ZoneInfoNotFoundError:
     ICT_TZ = timezone(timedelta(hours=7))
+
+
+def _jitter_tts_rate(base_rate: str) -> str:
+    """Slightly vary speech rate (+-2%) around the channel baseline for natural cadence."""
+    m = re.search(r"([+-]?\d+)", base_rate)
+    base_val = int(m.group(1)) if m else 8
+    varied = max(4, min(13, base_val + random.SystemRandom().randint(-2, 2)))
+    return f"{varied:+d}%"
 
 
 class ShortsPipeline:
@@ -74,6 +84,15 @@ class ShortsPipeline:
             logger.info("Skipping [%s]: %s (0 Gemini/YouTube quota used)", channel_id, reason)
             return
 
+        if not force:
+            jitter_sec = random.SystemRandom().randint(45, 540)
+            logger.info(
+                "Applying natural posting jitter for [%s]: waiting %ds before generation",
+                channel_id,
+                jitter_sec,
+            )
+            await asyncio.sleep(jitter_sec)
+
         job_id = f"{channel_id}_{uuid.uuid4().hex[:8]}"
         job_dir = self.settings.work_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
@@ -93,7 +112,7 @@ class ShortsPipeline:
                     script.full_narration,
                     job_dir / "voiceover.mp3",
                     voice=channel.tts_voice,
-                    rate=channel.tts_rate,
+                    rate=_jitter_tts_rate(channel.tts_rate),
                 )
 
                 queries = [beat.search_query for beat in script.beats]
