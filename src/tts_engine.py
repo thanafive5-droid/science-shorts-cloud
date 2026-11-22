@@ -79,13 +79,21 @@ class TTSEngine:
         self.voice = voice
         self.rate = rate
 
-    async def synthesize(self, text: str, output_audio_path: Path) -> TTSResult:
+    async def synthesize(
+        self,
+        text: str,
+        output_audio_path: Path,
+        voice: str | None = None,
+        rate: str | None = None,
+    ) -> TTSResult:
         """Try primary voice then fallback voices if Microsoft Edge TTS returns NoAudioReceived."""
-        candidate_voices = list(dict.fromkeys([self.voice, *FALLBACK_VOICES]))
+        chosen_voice = voice or self.voice
+        chosen_rate = rate or self.rate
+        candidate_voices = list(dict.fromkeys([chosen_voice, *FALLBACK_VOICES]))
         last_err: Exception | None = None
         for voice_name in candidate_voices:
             try:
-                return await self._synthesize_with_voice(text, output_audio_path, voice_name)
+                return await self._synthesize_with_voice(text, output_audio_path, voice_name, chosen_rate)
             except Exception as exc:
                 logger.warning("Edge TTS voice %s failed (%s); trying next voice...", voice_name, exc)
                 last_err = exc
@@ -93,20 +101,21 @@ class TTSEngine:
 
     @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=6))
     async def _synthesize_with_voice(
-        self, text: str, output_audio_path: Path, voice_name: str
+        self, text: str, output_audio_path: Path, voice_name: str, rate: str | None = None
     ) -> TTSResult:
         """Generate MP3 voiceover, exact ffprobe duration, and word-level timestamps."""
+        effective_rate = rate or self.rate
         output_audio_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             communicate = edge_tts.Communicate(
                 text=text,
                 voice=voice_name,
-                rate=self.rate,
+                rate=effective_rate,
                 boundary="WordBoundary",
             )
         except TypeError:
             # Older edge-tts versions without explicit boundary kwarg
-            communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=self.rate)
+            communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=effective_rate)
 
         words: list[WordTiming] = []
         audio_chunks = bytearray()
