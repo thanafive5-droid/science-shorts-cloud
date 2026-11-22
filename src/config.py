@@ -25,6 +25,8 @@ class ChannelConfig:
     cut_max_sec: float = 3.2
     bgm_volume: float = 0.38
     fallback_visual_queries: tuple[str, ...] = ()
+    max_daily_uploads: int = 3
+    min_interval_hours: float = 7.5
 
 
 CHANNELS: dict[str, ChannelConfig] = {
