@@ -95,10 +95,12 @@ def _choose_action_offset(clip_dur: float, cut_dur: float, pass_num: int) -> flo
 
 
 def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
-    """Synthesize a clear, modern, copyright-free science Shorts electronic BGM track."""
+    """Synthesize a rich, clearly audible, copyright-free modern science Shorts electronic beat."""
+    import random
+
     sample_rate = 22050
     total_samples = int(duration_sec * sample_rate)
-    # Modern electronic science progression (Hz): Am -> F -> C -> G
+    # Modern upbeat science chord progression (Hz): Am -> F -> C -> G
     chords = [
         (110.0, 220.0, 261.63, 329.63),  # Am
         (87.31, 174.61, 220.0, 261.63),  # F
@@ -106,17 +108,19 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
         (98.0, 196.0, 246.94, 293.66),   # G
     ]
     arpeggio_notes = [
-        (440.0, 523.25, 659.25, 523.25),
-        (349.23, 440.0, 523.25, 440.0),
-        (392.0, 523.25, 659.25, 783.99),
-        (392.0, 493.88, 587.33, 493.88),
+        (440.0, 523.25, 659.25, 523.25, 440.0, 659.25, 523.25, 392.0),
+        (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 329.63),
+        (392.0, 523.25, 659.25, 783.99, 659.25, 523.25, 392.0, 523.25),
+        (392.0, 493.88, 587.33, 493.88, 392.0, 587.33, 493.88, 392.0),
     ]
     chord_dur = 4.0
-    beat_dur = 0.5  # 120 BPM subtle pulse
-    fade_in = int(0.4 * sample_rate)
-    fade_out = int(1.0 * sample_rate)
+    beat_dur = 0.5   # 120 BPM quarter-note kick/pulse
+    step_dur = 0.25  # eighth-note melody/hi-hat
+    fade_in = int(0.35 * sample_rate)
+    fade_out = int(0.9 * sample_rate)
     buf = array.array("h")
     two_pi = 2.0 * math.pi
+    rng = random.Random(42)
 
     for i in range(total_samples):
         t = i / sample_rate
@@ -124,32 +128,40 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
         bass_f, f1, f2, f3 = chords[chord_idx]
         arp_freqs = arpeggio_notes[chord_idx]
 
-        # 1. Warm pulsing synth pad
+        # 1. Warm harmonic synth pad (fundamental + gentle 2nd harmonic for rich speaker presence)
         local_t = t % chord_dur
-        chord_env = min(1.0, local_t / 0.25) * min(1.0, (chord_dur - local_t) / 0.25)
+        chord_env = min(1.0, local_t / 0.18) * min(1.0, (chord_dur - local_t) / 0.18)
         pad = (
-            math.sin(two_pi * f1 * t)
-            + 0.85 * math.sin(two_pi * f2 * t)
-            + 0.75 * math.sin(two_pi * f3 * t)
-        ) / 2.6
+            math.sin(two_pi * f1 * t) + 0.25 * math.sin(two_pi * f1 * 2 * t)
+            + math.sin(two_pi * f2 * t) + 0.20 * math.sin(two_pi * f2 * 2 * t)
+            + math.sin(two_pi * f3 * t)
+        ) / 3.45
 
-        # 2. Rhythmic 120 BPM bass pulse + soft plucked arpeggio melody
-        beat_pos = (t % beat_dur) / beat_dur
-        pulse_env = math.exp(-4.5 * beat_pos)
-        bass = math.sin(two_pi * bass_f * t) * (0.45 + 0.55 * pulse_env)
+        # 2. Soft modern electronic kick thump (pitch-swept sine on every beat)
+        beat_t = t % beat_dur
+        kick_freq = 52.0 + 95.0 * math.exp(-32.0 * beat_t)
+        kick = math.sin(two_pi * kick_freq * beat_t) * math.exp(-12.0 * beat_t) * 0.55
 
-        arp_idx = int(t / beat_dur) % len(arp_freqs)
-        arp_f = arp_freqs[arp_idx]
-        arp = math.sin(two_pi * arp_f * t) * math.exp(-7.0 * beat_pos) * 0.45
+        # 3. Warm rhythmic bassline + crisp plucked melody + subtle off-beat hi-hat
+        step_t = t % step_dur
+        step_idx = int(t / step_dur) % len(arp_freqs)
+        bass = math.sin(two_pi * bass_f * t) * (0.4 + 0.6 * math.exp(-5.0 * beat_t)) * 0.42
+        arp_f = arp_freqs[step_idx]
+        arp = (
+            math.sin(two_pi * arp_f * t) + 0.3 * math.sin(two_pi * arp_f * 2 * t)
+        ) * math.exp(-9.0 * step_t) * 0.34
+        hihat = (rng.uniform(-1.0, 1.0) * math.exp(-65.0 * step_t) * 0.14) if (step_idx % 2 == 1) else 0.0
 
-        val = (0.45 * pad * chord_env) + (0.35 * bass) + arp
+        val = (0.42 * pad * chord_env) + kick + bass + arp + hihat
 
         if i < fade_in:
             val *= i / fade_in
         elif i > total_samples - fade_out:
             val *= max(0.0, (total_samples - i) / fade_out)
 
-        sample = int(max(-1.0, min(1.0, val * 0.85)) * 32767)
+        # Soft saturation for fuller perceived loudness on mobile speakers
+        val = math.tanh(val * 1.15)
+        sample = int(max(-1.0, min(1.0, val * 0.92)) * 32767)
         buf.append(sample)
 
     with wave.open(str(wav_path), "wb") as wf:
@@ -225,9 +237,11 @@ class VideoEditor:
         concat_list_path = work_dir / "concat.txt"
         concat_lines: list[str] = []
 
+        # Cinematic color pop + sharpness + 1080x1920 framing so every clip looks crisp & vibrant
         vf_scale = (
             "scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,fps=30,format=yuv420p"
+            "crop=1080:1920,eq=contrast=1.08:saturation=1.24:brightness=0.02,"
+            "unsharp=5:5:0.75:3:3:0.35,fps=30,format=yuv420p"
         )
 
         for i, (clip_path, start_offset, dur) in enumerate(cut_plan):
@@ -305,7 +319,7 @@ class VideoEditor:
                 "-vf",
                 f"ass='{ass_escaped}'",
                 "-filter_complex",
-                "[1:a]volume=1.0[vo];[2:a]volume=0.28[bgm];[vo][bgm]amix=inputs=2:duration=first:normalize=0:dropout_transition=2[aout]",
+                "[1:a]volume=1.05[vo];[2:a]volume=0.38[bgm];[vo][bgm]amix=inputs=2:duration=first:normalize=0:dropout_transition=2,alimiter=limit=0.95[aout]",
                 "-map",
                 "0:v:0",
                 "-map",
