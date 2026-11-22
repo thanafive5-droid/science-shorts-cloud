@@ -170,6 +170,49 @@ class MediaFetcher:
             logger.warning("Wikimedia search failed for '%s': %s", query, exc)
             return []
 
+    async def _search_wikimedia_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
+        """Search Wikimedia Commons for sharp, topic-relevant real photos (for Ken Burns motion when videos lack a match)."""
+        try:
+            resp = await client.get(
+                "https://commons.wikimedia.org/w/api.php",
+                headers={"User-Agent": USER_AGENT},
+                params={
+                    "action": "query",
+                    "generator": "search",
+                    "gsrnamespace": "6",
+                    "gsrsearch": f"filetype:bitmap {query}",
+                    "gsrlimit": "12",
+                    "prop": "imageinfo",
+                    "iiprop": "url|mime|size|dimensions",
+                    "iiurlwidth": "1280",
+                    "format": "json",
+                },
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            pages = resp.json().get("query", {}).get("pages", {})
+            scored: list[tuple[int, str, str]] = []
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
+            for page_id, page in pages.items():
+                title_lower = str(page.get("title", "")).lower()
+                if not _is_safe_text(title_lower, allow_animations=False):
+                    continue
+                score = _relevance_score(title_lower, query_terms)
+                if query_terms and score == 0:
+                    continue
+                info = (page.get("imageinfo") or [{}])[0]
+                url = info.get("thumburl") or info.get("url")
+                mime = info.get("mime", "")
+                w = info.get("width") or 0
+                h = info.get("height") or 0
+                if url and mime in ("image/jpeg", "image/png") and w >= 720 and h >= 540:
+                    scored.append((score, f"wmimg_{page_id}", url))
+            scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
+            return [(vid, url) for _, vid, url in scored[:4]]
+        except Exception as exc:
+            logger.warning("Wikimedia photo search failed for '%s': %s", query, exc)
+            return []
+
     async def _search_archive(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
         """Search Internet Archive (archive.org) for diverse free MP4 videos (AI-verified before use)."""
         try:
@@ -288,114 +331,108 @@ class MediaFetcher:
         output_dir: Path,
         fallback_query: str = "nature science",
         nasa_ratio: float = 0.2,
-        allow_animations: bool = False,
+        allow_animations: bool = True,
         previously_used_ids: Optional[set[str]] = None,
     ) -> tuple[list[Path], list[str]]:
-        """Fetch diverse AI-verified clips, skipping all previously_used_ids across past Shorts."""
+        """Fetch diverse, topic-relevant clips using batched Gemini Vision checks (saves ~85% API quota)."""
         output_dir.mkdir(parents=True, exist_ok=True)
         used_ids: set[str] = set(previously_used_ids or set())
         newly_used_ids: list[str] = []
-        downloaded: list[Path] = []
         max_nasa = max(1, round(len(queries) * nasa_ratio))
         nasa_count = 0
 
+        # Pass 1: Download 1 top candidate per beat, then batch-verify ALL beats in ONE Vision call!
+        chosen: list[Optional[tuple[Path, bool, str]]] = [None] * len(queries)
         async with httpx.AsyncClient() as client:
-            for idx, query in enumerate(queries):
-                safe_query = query if _is_safe_text(query, allow_animations=allow_animations) else fallback_query
-                # For Astronomy (nasa_ratio ~0.5), alternate preferring NASA on even beats up to max_nasa
-                prefer_nasa = nasa_ratio >= 0.4 and (idx % 2 == 0) and (nasa_count < max_nasa)
-                allow_nasa = nasa_count < max_nasa
-                clip_path, is_nasa, chosen_vid = await self._fetch_verified_clip(
-                    client,
-                    idx,
-                    safe_query,
-                    fallback_query,
-                    used_ids,
-                    output_dir,
-                    allow_nasa=allow_nasa,
-                    prefer_nasa=prefer_nasa,
-                    allow_animations=allow_animations,
-                )
-                if is_nasa:
-                    nasa_count += 1
-                if chosen_vid:
-                    newly_used_ids.append(chosen_vid)
-                downloaded.append(clip_path)
+            for attempt in range(2):
+                pending_indices = [i for i, c in enumerate(chosen) if c is None]
+                if not pending_indices:
+                    break
 
+                batch_downloads: list[tuple[int, Path, str, bool, str]] = []
+                for idx in pending_indices:
+                    raw_q = queries[idx]
+                    safe_q = raw_q if _is_safe_text(raw_q, allow_animations=allow_animations) else fallback_query
+                    # Attempt 0: exact query (videos + real photos); Attempt 1: broadened keyword + photos
+                    search_q = safe_q if attempt == 0 else (safe_q.split()[0] if " " in safe_q else fallback_query)
+                    prefer_nasa = nasa_ratio >= 0.4 and (idx % 2 == 0) and (nasa_count < max_nasa)
+                    allow_nasa = nasa_count < max_nasa
+                    cands = await self._collect_candidates(
+                        client,
+                        search_q,
+                        used_ids,
+                        allow_nasa=allow_nasa,
+                        prefer_nasa=prefer_nasa,
+                        allow_animations=allow_animations,
+                        include_photos=True,
+                    )
+                    for vid, url, is_nasa in cands:
+                        used_ids.add(vid)
+                        low_u = url.lower()
+                        ext = ".jpg" if any(k in low_u for k in (".jpg", ".jpeg", ".png")) else (".webm" if ".webm" in low_u else ".mp4")
+                        temp_path = output_dir / f"cand_{attempt}_{idx:02d}_{vid}{ext}"
+                        try:
+                            await self._download_file(client, url, temp_path)
+                            batch_downloads.append((idx, temp_path, raw_q, is_nasa, vid))
+                            break
+                        except Exception as exc:
+                            logger.warning("Download failed for %s: %s", vid, exc)
+                            temp_path.unlink(missing_ok=True)
+
+                if not batch_downloads:
+                    continue
+
+                if self.safety_filter is not None:
+                    verdicts = await asyncio.to_thread(
+                        self.safety_filter.check_batch,
+                        [(p, q) for _, p, q, _, _ in batch_downloads],
+                        output_dir,
+                        allow_animations=allow_animations,
+                    )
+                else:
+                    verdicts = [(True, "ok")] * len(batch_downloads)
+
+                for (idx, temp_path, raw_q, is_nasa, vid), (ok, reason) in zip(batch_downloads, verdicts):
+                    if ok:
+                        final_path = output_dir / f"raw_{idx:02d}{temp_path.suffix}"
+                        temp_path.replace(final_path)
+                        chosen[idx] = (final_path, is_nasa, vid)
+                        if is_nasa:
+                            nasa_count += 1
+                    else:
+                        logger.warning("REJECTED clip %s for '%s': %s", vid, raw_q, reason)
+                        temp_path.unlink(missing_ok=True)
+
+            # Emergency safe NASA fallback only for any beat still unfilled after 2 batched passes
+            fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
+            random.shuffle(fb_list)
+            for idx, item in enumerate(chosen):
+                if item is not None:
+                    continue
+                for fb in fb_list:
+                    for vid, url in await self._search_nasa(client, fb):
+                        if vid not in used_ids:
+                            used_ids.add(vid)
+                            final_path = output_dir / f"raw_{idx:02d}.mp4"
+                            await self._download_file(client, url, final_path)
+                            chosen[idx] = (final_path, True, vid)
+                            nasa_count += 1
+                            break
+                    if chosen[idx] is not None:
+                        break
+                if chosen[idx] is None:
+                    raise RuntimeError(f"Could not find any safe visual for beat {idx}: '{queries[idx]}'")
+
+        downloaded = [c[0] for c in chosen if c is not None]
+        newly_used_ids = [c[2] for c in chosen if c is not None]
         logger.info(
-            "Downloaded %d unique AI-verified clips (%d NASA / %d diverse non-NASA, skipped %d past clips)",
+            "Downloaded %d unique AI-verified visuals (%d NASA / %d diverse non-NASA, skipped %d past clips)",
             len(downloaded),
             nasa_count,
             len(downloaded) - nasa_count,
             len(previously_used_ids or ()),
         )
         return downloaded, newly_used_ids
-
-    async def _fetch_verified_clip(
-        self,
-        client: httpx.AsyncClient,
-        idx: int,
-        query: str,
-        fallback_query: str,
-        used_ids: set[str],
-        output_dir: Path,
-        allow_nasa: bool,
-        prefer_nasa: bool = False,
-        allow_animations: bool = False,
-    ) -> tuple[Path, bool, str]:
-        """Download and visually verify candidates until one passes Gemini Vision safety & relevance."""
-        search_queries = [query]
-        if " " in query:
-            search_queries.append(query.split()[0])
-        shuffled_fb = list(DIVERSE_FALLBACK_QUERIES)
-        random.shuffle(shuffled_fb)
-        search_queries.append(shuffled_fb[idx % len(shuffled_fb)])
-        search_queries.append(fallback_query)
-
-        for q in search_queries:
-            candidates = await self._collect_candidates(
-                client, q, used_ids, allow_nasa=allow_nasa, prefer_nasa=prefer_nasa, allow_animations=allow_animations
-            )
-            for vid, url, is_nasa in candidates:
-                used_ids.add(vid)
-                ext = ".webm" if ".webm" in url.lower() else ".mp4"
-                temp_path = output_dir / f"cand_{idx:02d}_{vid}{ext}"
-                try:
-                    await self._download_file(client, url, temp_path)
-                except Exception as exc:
-                    logger.warning("Download failed for %s: %s", vid, exc)
-                    temp_path.unlink(missing_ok=True)
-                    continue
-
-                if self.safety_filter is not None:
-                    ok, reason = await asyncio.to_thread(
-                        self.safety_filter.is_clip_safe_and_relevant,
-                        temp_path,
-                        query,
-                        output_dir,
-                        allow_animations=allow_animations,
-                    )
-                    if not ok:
-                        logger.warning("REJECTED clip %s for '%s': %s", vid, query, reason)
-                        temp_path.unlink(missing_ok=True)
-                        continue
-
-                final_path = output_dir / f"raw_{idx:02d}{ext}"
-                temp_path.replace(final_path)
-                return final_path, is_nasa, vid
-
-        # Emergency fallback if every single diverse candidate failed
-        fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
-        random.shuffle(fb_list)
-        for fb in fb_list:
-            for vid, url in await self._search_nasa(client, fb):
-                if vid not in used_ids:
-                    used_ids.add(vid)
-                    final_path = output_dir / f"raw_{idx:02d}.mp4"
-                    await self._download_file(client, url, final_path)
-                    return final_path, True, vid
-
-        raise RuntimeError(f"Could not find any safe stock video for beat {idx}: '{query}'")
 
     async def _collect_candidates(
         self,
@@ -404,9 +441,10 @@ class MediaFetcher:
         used_ids: set[str],
         allow_nasa: bool,
         prefer_nasa: bool = False,
-        allow_animations: bool = False,
+        allow_animations: bool = True,
+        include_photos: bool = True,
     ) -> list[tuple[str, str, bool]]:
-        """Return prioritized list of (vid, url, is_nasa)."""
+        """Return prioritized list of (vid, url, is_nasa) including real videos + sharp topic photos."""
         non_nasa: list[tuple[str, str, bool]] = []
         nasa_list: list[tuple[str, str, bool]] = []
 
@@ -432,6 +470,11 @@ class MediaFetcher:
         for vid, url in await self._search_archive(client, query):
             if vid not in used_ids:
                 non_nasa.append((vid, url, False))
+
+        if include_photos:
+            for vid, url in await self._search_wikimedia_photos(client, query):
+                if vid not in used_ids:
+                    non_nasa.append((vid, url, False))
 
         if allow_nasa:
             for vid, url in await self._search_nasa(client, query):
