@@ -197,6 +197,9 @@ class VideoEditor:
         tts_result: TTSResult,
         work_dir: Path,
         output_path: Path,
+        cut_min_sec: float = 2.2,
+        cut_max_sec: float = 3.2,
+        bgm_volume: float = 0.38,
     ) -> Path:
         """Trim each clip to ~2-3s, concat, burn captions, and mux voiceover."""
         if not raw_clips:
@@ -204,11 +207,11 @@ class VideoEditor:
 
         vcodec, vcodec_flags = _detect_video_encoder()
 
-        # Calculate target clip duration (~2.0 to 3.0 seconds per cut)
+        # Calculate target clip duration (~2.1 to 3.2 seconds per cut)
         # Add +0.4s video buffer beyond TTS duration so the final spoken sentence is never cut off
         total_dur = tts_result.duration_sec + 0.4
         num_clips = len(raw_clips)
-        per_clip_dur = max(2.0, min(3.0, total_dur / num_clips))
+        per_clip_dur = max(cut_min_sec, min(cut_max_sec, total_dur / num_clips))
 
         # Probe clip durations so we can skip intro title cards and seek into live action
         clip_durations = {clip: _probe_video_duration(clip) for clip in raw_clips}
@@ -248,25 +251,32 @@ class VideoEditor:
             seg_path = trimmed_dir / f"seg_{i:03d}.mp4"
             is_image = clip_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
             if is_image:
-                # Smooth Ken Burns zoom-in animation for high-res real photos
+                # Smooth Ken Burns animation (single input frame into zoompan — NEVER use -loop 1!)
                 frames = max(30, int(round(dur * 30)))
+                zoom_expr = (
+                    "min(zoom+0.0012,1.12)"
+                    if i % 2 == 0
+                    else "if(eq(on,1),1.12,max(zoom-0.0012,1.0))"
+                )
                 vf_img = (
                     "scale=1280:2276:force_original_aspect_ratio=increase,"
                     "crop=1280:2276,"
-                    f"zoompan=z='min(zoom+0.0012,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=30,"
+                    f"zoompan=z='{zoom_expr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s=1080x1920:fps=30,"
                     "eq=contrast=1.08:saturation=1.22:brightness=0.02,format=yuv420p"
                 )
                 _run_ffmpeg(
                     [
-                        "-loop",
-                        "1",
-                        "-t",
-                        f"{dur:.2f}",
                         "-i",
                         str(clip_path),
                         "-an",
                         "-vf",
                         vf_img,
+                        "-t",
+                        f"{dur:.2f}",
+                        "-r",
+                        "30",
+                        "-video_track_timescale",
+                        "15360",
                         "-c:v",
                         vcodec,
                         *vcodec_flags,
@@ -279,13 +289,17 @@ class VideoEditor:
                         [
                             "-ss",
                             f"{start_offset:.2f}",
-                            "-t",
-                            f"{dur:.2f}",
                             "-i",
                             str(clip_path),
                             "-an",
                             "-vf",
                             vf_scale,
+                            "-t",
+                            f"{dur:.2f}",
+                            "-r",
+                            "30",
+                            "-video_track_timescale",
+                            "15360",
                             "-c:v",
                             vcodec,
                             *vcodec_flags,
@@ -298,13 +312,17 @@ class VideoEditor:
                         [
                             "-stream_loop",
                             "-1",
-                            "-t",
-                            f"{dur:.2f}",
                             "-i",
                             str(clip_path),
                             "-an",
                             "-vf",
                             vf_scale,
+                            "-t",
+                            f"{dur:.2f}",
+                            "-r",
+                            "30",
+                            "-video_track_timescale",
+                            "15360",
                             "-c:v",
                             vcodec,
                             *vcodec_flags,
@@ -347,7 +365,7 @@ class VideoEditor:
                 "-vf",
                 f"ass='{ass_escaped}'",
                 "-filter_complex",
-                "[1:a]volume=1.05[vo];[2:a]volume=0.38[bgm];[vo][bgm]amix=inputs=2:duration=first:normalize=0:dropout_transition=2,alimiter=limit=0.95[aout]",
+                f"[1:a]volume=1.05[vo];[2:a]volume={bgm_volume:.2f}[bgm];[vo][bgm]amix=inputs=2:duration=first:normalize=0:dropout_transition=2,alimiter=limit=0.95[aout]",
                 "-map",
                 "0:v:0",
                 "-map",
