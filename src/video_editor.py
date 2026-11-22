@@ -24,24 +24,38 @@ def _format_ass_time(seconds: float) -> str:
 
 
 def build_ass_subtitles(words: list[WordTiming], ass_path: Path) -> Path:
-    """Group words into punchy 2-3 word Shorts captions in ASS format."""
+    """Group words into character-bounded Shorts captions in ASS format so lines never clip."""
     header = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
-WrapStyle: 2
+WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVu Sans,74,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,2,2,80,80,380,1
+Style: Default,DejaVu Sans,62,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,100,130,400,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     lines = [header]
-    chunk_size = 3
-    for i in range(0, len(words), chunk_size):
-        group = words[i : i + chunk_size]
+    groups: list[list[WordTiming]] = []
+    current: list[WordTiming] = []
+    current_len = 0
+    for w in words:
+        w_len = len(w.text)
+        next_len = current_len + (1 if current else 0) + w_len
+        if current and (len(current) >= 3 or next_len > 16):
+            groups.append(current)
+            current = [w]
+            current_len = w_len
+        else:
+            current.append(w)
+            current_len = next_len
+    if current:
+        groups.append(current)
+
+    for group in groups:
         start = _format_ass_time(group[0].start_sec)
         end = _format_ass_time(group[-1].end_sec + 0.08)
         text = " ".join(w.text for w in group).upper().replace("{", "").replace("}", "")
