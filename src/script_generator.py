@@ -132,7 +132,13 @@ Return ONLY valid JSON matching this exact schema:
 """
 
         candidate_models = list(
-            dict.fromkeys([self.model, "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"])
+            dict.fromkeys([
+                self.model,
+                "gemini-3-flash-preview",
+                "gemini-3.5-flash",
+                "gemini-3.7-flash",
+                "gemini-3.1-flash-lite",
+            ])
         )
         response = None
         last_err: Exception | None = None
@@ -187,7 +193,7 @@ Return ONLY valid JSON matching this exact schema:
         )
         return script
 
-    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=2, min=2, max=6))
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=3, max=10))
     def _call_gemini_with_retry(
         self, model_name: str, system_instruction: str, prompt: str
     ):
@@ -198,6 +204,6 @@ Return ONLY valid JSON matching this exact schema:
                 system_instruction=system_instruction,
                 response_mime_type="application/json",
                 temperature=0.9,
-                http_options=types.HttpOptions(timeout=25000),
+                http_options=types.HttpOptions(timeout=45000),
             ),
         )
