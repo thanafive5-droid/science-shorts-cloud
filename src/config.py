@@ -16,6 +16,7 @@ class ChannelConfig:
     default_hashtags: tuple[str, ...]
     schedule_hours: tuple[int, ...]
     schedule_minute: int
+    youtube_handle: str = ""
     nasa_ratio: float = 0.2
     allow_animations: bool = True
 
@@ -31,6 +32,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         default_hashtags=("#physics", "#science", "#space", "#shorts"),
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=0,
+        youtube_handle="@Quantum_Snap_YT_Physics",
     ),
     "chemistry": ChannelConfig(
         id="chemistry",
@@ -42,6 +44,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         default_hashtags=("#chemistry", "#science", "#experiment", "#shorts"),
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=15,
+        youtube_handle="@ReactionRush-v6u",
     ),
     "biology": ChannelConfig(
         id="biology",
@@ -54,6 +57,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         default_hashtags=("#biology", "#science", "#nature", "#shorts"),
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=30,
+        youtube_handle="@BioPulse-Daily-yt",
     ),
     "general_science": ChannelConfig(
         id="general_science",
@@ -65,6 +69,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         default_hashtags=("#science", "#facts", "#didyouknow", "#shorts"),
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=45,
+        youtube_handle="@CoreScienceL-v4b",
         nasa_ratio=0.2,
         allow_animations=True,
     ),
@@ -78,6 +83,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         default_hashtags=("#earthscience", "#geology", "#earth", "#shorts"),
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=5,
+        youtube_handle="@EarthSciPulse",
         nasa_ratio=0.2,
         allow_animations=True,
     ),
@@ -91,6 +97,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         default_hashtags=("#astronomy", "#space", "#cosmos", "#shorts"),
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=20,
+        youtube_handle="@AstroSnapDaily-r4l",
         nasa_ratio=0.5,
         allow_animations=True,
     ),
