@@ -40,7 +40,9 @@ class ShortsPipeline:
         # Serialize heavy FFmpeg rendering so cloud container RAM stays predictable
         self._render_lock = asyncio.Lock()
 
-    async def run_channel_job(self, channel_id: str, force: bool = False) -> None:
+    async def run_channel_job(
+        self, channel_id: str, force: bool = False, raise_on_error: bool = False
+    ) -> None:
         """Execute one full Short creation & upload cycle for a channel."""
         if not force:
             allowed, reason = self.db.can_post_now(channel_id)
@@ -135,6 +137,8 @@ class ShortsPipeline:
                     status="failed",
                     error_message=str(exc)[:500],
                 )
+                if raise_on_error:
+                    raise
             finally:
                 # Always clean up temporary video files to keep cloud disk free
                 shutil.rmtree(job_dir, ignore_errors=True)
