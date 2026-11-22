@@ -44,6 +44,14 @@ class FactoryDatabase:
                     clip_count INTEGER,
                     created_at TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS used_clips (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id TEXT NOT NULL,
+                    clip_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    UNIQUE(channel_id, clip_id)
+                );
                 """
             )
 
@@ -55,6 +63,26 @@ class FactoryDatabase:
                 (channel_id, limit),
             ).fetchall()
         return [row["topic"] for row in rows]
+
+    def get_recent_clip_ids(self, channel_id: str, limit: int = 500) -> set[str]:
+        """Return recently used stock clip IDs for this channel so footage never repeats across Shorts."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT clip_id FROM used_clips WHERE channel_id = ? ORDER BY id DESC LIMIT ?",
+                (channel_id, limit),
+            ).fetchall()
+        return {row["clip_id"] for row in rows}
+
+    def mark_clips_used(self, channel_id: str, clip_ids: list[str]) -> None:
+        """Persist used stock clip IDs for deduplication across future runs."""
+        if not clip_ids:
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        with self._connect() as conn:
+            conn.executemany(
+                "INSERT OR IGNORE INTO used_clips (channel_id, clip_id, created_at) VALUES (?, ?, ?)",
+                [(channel_id, cid, now) for cid in clip_ids],
+            )
 
     def mark_topic_used(self, channel_id: str, topic: str) -> None:
         """Record a topic as used for a channel."""
