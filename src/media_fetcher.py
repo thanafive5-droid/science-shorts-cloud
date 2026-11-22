@@ -341,10 +341,13 @@ class MediaFetcher:
         max_nasa = max(1, round(len(queries) * nasa_ratio))
         nasa_count = 0
 
-        # Pass 1: Download 1 top candidate per beat, then batch-verify ALL beats in ONE Vision call!
+        # Batched Vision-verified passes:
+        #   attempt 0: exact query (real videos + photos)
+        #   attempt 1: exact query (crisp Wikimedia real photos only for any rejected beat)
+        #   attempt 2: broadened 2-word query (videos + photos)
         chosen: list[Optional[tuple[Path, bool, str]]] = [None] * len(queries)
         async with httpx.AsyncClient() as client:
-            for attempt in range(2):
+            for attempt in range(3):
                 pending_indices = [i for i, c in enumerate(chosen) if c is None]
                 if not pending_indices:
                     break
@@ -353,8 +356,11 @@ class MediaFetcher:
                 for idx in pending_indices:
                     raw_q = queries[idx]
                     safe_q = raw_q if _is_safe_text(raw_q, allow_animations=allow_animations) else fallback_query
-                    # Attempt 0: exact query (videos + real photos); Attempt 1: broadened keyword + photos
-                    search_q = safe_q if attempt == 0 else (safe_q.split()[0] if " " in safe_q else fallback_query)
+                    photos_only = attempt == 1
+                    if attempt == 2:
+                        search_q = " ".join(safe_q.split()[:2]) if " " in safe_q else fallback_query
+                    else:
+                        search_q = safe_q
                     prefer_nasa = nasa_ratio >= 0.4 and (idx % 2 == 0) and (nasa_count < max_nasa)
                     allow_nasa = nasa_count < max_nasa
                     cands = await self._collect_candidates(
@@ -365,6 +371,7 @@ class MediaFetcher:
                         prefer_nasa=prefer_nasa,
                         allow_animations=allow_animations,
                         include_photos=True,
+                        photos_only=photos_only,
                     )
                     for vid, url, is_nasa in cands:
                         used_ids.add(vid)
@@ -403,27 +410,33 @@ class MediaFetcher:
                         logger.warning("REJECTED clip %s for '%s': %s", vid, raw_q, reason)
                         temp_path.unlink(missing_ok=True)
 
-            # Emergency safe NASA fallback only for any beat still unfilled after 2 batched passes
+            # Emergency safe NASA fallback only up to max_nasa, then reuse verified safe visuals
             fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
             random.shuffle(fb_list)
             for idx, item in enumerate(chosen):
                 if item is not None:
                     continue
-                for fb in fb_list:
-                    for vid, url in await self._search_nasa(client, fb):
-                        if vid not in used_ids:
-                            used_ids.add(vid)
-                            final_path = output_dir / f"raw_{idx:02d}.mp4"
-                            await self._download_file(client, url, final_path)
-                            chosen[idx] = (final_path, True, vid)
-                            nasa_count += 1
+                if nasa_count < max_nasa:
+                    for fb in fb_list:
+                        for vid, url in await self._search_nasa(client, fb):
+                            if vid not in used_ids:
+                                used_ids.add(vid)
+                                final_path = output_dir / f"raw_{idx:02d}.mp4"
+                                await self._download_file(client, url, final_path)
+                                chosen[idx] = (final_path, True, vid)
+                                nasa_count += 1
+                                break
+                        if chosen[idx] is not None:
                             break
-                    if chosen[idx] is not None:
-                        break
                 if chosen[idx] is None:
                     verified_pool = [c for c in chosen if c is not None]
-                    if len(verified_pool) >= 3:
-                        fallback_pick = verified_pool[(idx + 2) % len(verified_pool)]
+                    if nasa_ratio < 0.4:
+                        non_nasa_pool = [c for c in verified_pool if not c[1]]
+                        pick_pool = non_nasa_pool if non_nasa_pool else verified_pool
+                    else:
+                        pick_pool = verified_pool
+                    if len(verified_pool) >= 2:
+                        fallback_pick = pick_pool[(idx + 2) % len(pick_pool)]
                         chosen[idx] = fallback_pick
                         logger.warning(
                             "Beat %d ('%s') reused verified safe visual %s after fallback passes",
@@ -454,8 +467,16 @@ class MediaFetcher:
         prefer_nasa: bool = False,
         allow_animations: bool = True,
         include_photos: bool = True,
+        photos_only: bool = False,
     ) -> list[tuple[str, str, bool]]:
         """Return prioritized list of (vid, url, is_nasa) including real videos + sharp topic photos."""
+        if photos_only:
+            return [
+                (vid, url, False)
+                for vid, url in await self._search_wikimedia_photos(client, query)
+                if vid not in used_ids
+            ]
+
         non_nasa: list[tuple[str, str, bool]] = []
         nasa_list: list[tuple[str, str, bool]] = []
 
