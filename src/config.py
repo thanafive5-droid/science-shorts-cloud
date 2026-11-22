@@ -17,7 +17,7 @@ class ChannelConfig:
     schedule_hours: tuple[int, ...]
     schedule_minute: int
     youtube_handle: str = ""
-    nasa_ratio: float = 0.2
+    nasa_ratio: float = 0.0
     allow_animations: bool = True
 
 
@@ -70,7 +70,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=45,
         youtube_handle="@CoreScienceL-v4b",
-        nasa_ratio=0.2,
+        nasa_ratio=0.0,
         allow_animations=True,
     ),
     "earth_science": ChannelConfig(
@@ -84,7 +84,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         schedule_hours=(3, 7, 11, 15, 19, 23),
         schedule_minute=5,
         youtube_handle="@EarthSciPulse",
-        nasa_ratio=0.2,
+        nasa_ratio=0.0,
         allow_animations=True,
     ),
     "astronomy": ChannelConfig(
