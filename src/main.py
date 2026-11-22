@@ -75,7 +75,7 @@ async def start_worker() -> None:
         channel_id = request.match_info["channel_id"]
         if channel_id not in CHANNELS:
             return web.json_response({"error": f"Unknown channel: {channel_id}"}, status=404)
-        asyncio.create_task(pipeline.run_channel_job(channel_id))
+        asyncio.create_task(pipeline.run_channel_job(channel_id, force=True))
         return web.json_response({"queued": channel_id})
 
     app.router.add_get("/health", handle_health)
@@ -102,7 +102,7 @@ async def run_once(target: str, force: bool = False) -> None:
     for channel_id in targets:
         if channel_id not in CHANNELS:
             raise ValueError(f"Unknown channel '{channel_id}'. Choose from: {', '.join(CHANNELS)} or 'all'")
-        await pipeline.run_channel_job(channel_id, force=force)
+        await pipeline.run_channel_job(channel_id, force=force, raise_on_error=True)
 
 
 if __name__ == "__main__":
