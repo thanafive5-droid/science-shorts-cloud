@@ -1,0 +1,64 @@
+{
+  "physics": {
+    "focus_topics": [
+      "tactile everyday physics paradoxes",
+      "counterintuitive material strength & fluid dynamics",
+      "extreme gravity, light & sound phenomena"
+    ],
+    "avoid_angles": [
+      "abstract invisible quantum field jargon without vivid visuals"
+    ],
+    "hook_style": "Use 'The [Concrete Object] Paradox' or impossible-sounding physical contrast in title & beat 1",
+    "extra_directive": "Prioritize phenomena viewers can instantly visualize (glass, ice, magnets, water, extreme pressure) over abstract equations."
+  },
+  "chemistry": {
+    "focus_topics": [
+      "extreme thermal/phase-change contrasts (hot ice, liquid metals, supercooled liquids)",
+      "dramatic visible reactions and strange elements",
+      "everyday materials with shocking hidden chemistry"
+    ],
+    "avoid_angles": [
+      "vague 'changes color' titles without extreme stakes"
+    ],
+    "hook_style": "Use extreme physical contrast titles like 'The [Substance] That [Impossible Action]!'",
+    "extra_directive": "Lead with the most extreme sensory contrast (burning cold, metal that melts in your hand, liquid that climbs walls)."
+  },
+  "biology": {
+    "focus_topics": [
+      "extreme ocean and wildlife superpowers (camouflage, regeneration, bioluminescence)",
+      "weird real survival adaptations with vivid nature footage"
+    ],
+    "avoid_angles": [
+      "confusing metaphors or clickbait-sounding exaggerations in titles"
+    ],
+    "hook_style": "Spotlight one concrete creature's superpower: 'The [Habitat]'s Ultimate [Superpower]!'",
+    "extra_directive": "Keep titles literal, vivid, and anchored to a real animal, plant, or ocean organism."
+  },
+  "general_science": {
+    "focus_topics": [
+      "gravity-defying liquids and impossible-looking everyday physics/nature",
+      "high-curiosity natural anomalies and surprising engineering breakthroughs"
+    ],
+    "avoid_angles": [
+      "textbook 'Why X happens' titles"
+    ],
+    "hook_style": "Use curiosity-gap 'The [Thing] That [Defies/Breaks Rule]!' titles instead of 'Why...'",
+    "extra_directive": "Avoid school-lesson phrasing. Frame every topic as a baffling real-world anomaly revealed in 20 seconds."
+  },
+  "earth_science": {
+    "focus_topics": [
+      "deep Earth mysteries, ancient geological time capsules, extreme volcanoes, ocean trenches"
+    ],
+    "avoid_angles": [],
+    "hook_style": "default",
+    "extra_directive": ""
+  },
+  "astronomy": {
+    "focus_topics": [
+      "extreme exoplanets (metal rain, diamond rain, rogue worlds), black holes, neutron stars"
+    ],
+    "avoid_angles": [],
+    "hook_style": "Keep winning 'The Alien World / Star That [Extreme Phenomenon]' framing",
+    "extra_directive": ""
+  }
+}
