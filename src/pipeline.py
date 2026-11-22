@@ -69,6 +69,8 @@ class ShortsPipeline:
                 tts_result = await self.tts.synthesize(
                     script.full_narration,
                     job_dir / "voiceover.mp3",
+                    voice=channel.tts_voice,
+                    rate=channel.tts_rate,
                 )
 
                 queries = [beat.search_query for beat in script.beats]
@@ -77,6 +79,7 @@ class ShortsPipeline:
                     queries=queries,
                     output_dir=job_dir / "clips",
                     fallback_query=f"{channel.display_name.lower()} science",
+                    fallback_queries=channel.fallback_visual_queries,
                     nasa_ratio=channel.nasa_ratio,
                     allow_animations=channel.allow_animations,
                     previously_used_ids=past_clips,
@@ -89,6 +92,9 @@ class ShortsPipeline:
                     tts_result,
                     job_dir,
                     final_video,
+                    channel.cut_min_sec,
+                    channel.cut_max_sec,
+                    channel.bgm_volume,
                 )
 
                 creds = self.settings.get_youtube_credentials(channel_id)
