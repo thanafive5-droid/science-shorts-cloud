@@ -59,23 +59,24 @@ class VisualSafetyFilter:
             img_bytes = frame_path.read_bytes()
             if allow_animations:
                 rule_4 = (
-                    "4. Confusing abstract geometric wireframes, meaningless fractals, or low-quality clutter "
-                    "(Clear, easy-to-understand educational Earth/science animations OR real camera footage ARE ALLOWED)."
+                    "4. Confusing abstract geometric wireframes, meaningless fractals, ugly low-effort sketches, "
+                    "or blurry/low-resolution/washed-out footage (Clear, colorful, visually engaging educational "
+                    "science animations OR crisp real camera/telescope/microscope footage ARE ALLOWED)."
                 )
             else:
                 rule_4 = (
-                    "4. Abstract geometric lines, wireframes, 2D cartoons, CGI simulations, fractals, or shapes "
-                    "on a black background (MUST be real-world camera footage or real telescope/microscope imagery)."
+                    "4. Abstract geometric lines, wireframes, 2D cartoons, CGI simulations, fractals, or blurry "
+                    "footage (MUST be sharp real-world camera footage or real telescope/microscope imagery)."
                 )
             prompt = (
-                f"Inspect this video frame intended for a family-friendly YouTube Science Short "
+                f"Inspect this video frame intended for a high-quality, family-friendly YouTube Science Short "
                 f"about '{topic_query}'.\n"
                 "Reject (safe=false) if ANY of these apply:\n"
                 "1. Nudity, suggestive/sexual content, exposed skin/swimwear, gore, blood, or medical surgery.\n"
                 "2. Mostly text on a solid/plain background, title card, slide, book page, or logo screen.\n"
                 "3. Random people talking, crowds, sports stadium, news studio, or political speech.\n"
                 f"{rule_4}\n"
-                "5. Completely blank/black frame.\n"
+                "5. Completely unrelated to science/nature/the topic, or blank/black/very dark blurry frame.\n"
                 "Return ONLY JSON: {\"safe\": true/false, \"reason\": \"short reason\"}"
             )
             resp = self.client.models.generate_content(
