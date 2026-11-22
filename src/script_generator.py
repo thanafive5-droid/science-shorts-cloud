@@ -125,6 +125,7 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDER
    - **STRICT SAFETY**: Every topic and `search_query` MUST be 100% G-rated, family-friendly, and YouTube-safe (NO nudity, NO graphic anatomy/surgery/blood, NO violence, NO people/crowds/sports).
    - **CRITICAL FOR BEAT 1 (OPENING HOOK)**: `search_query` MUST be vivid, dramatic real-world nature/space/science/lab footage (e.g. "volcano lava eruption", "lightning storm earth", "ocean coral reef", "sun solar flare", "aurora borealis space", "water droplet microgravity"). NEVER choose queries that return title screens, slides, text graphics, diagrams, or people talking.
    - Every beat's `search_query` (2-3 concrete English nouns/verbs) MUST directly match the physical object or phenomenon being spoken about in that exact beat.
+   - NEVER use "subscribe button", "like and subscribe", "text", "diagram", or "person..." as `search_query` — even for the final CTA beat, always use a vivid closing science/nature visual matching the topic.
 5. **Strict Scientific Fact-Check**: Double-check EVERY number, unit, cause-and-effect claim, and scientific term before outputting. Zero myths, zero exaggerations, zero hallucinations—100% peer-reviewed scientific accuracy!
 6. **Metadata**:
    - `title`: Crisp Title Case YouTube Shorts title under 65 chars, ending with #shorts, built around a concrete curiosity gap or surprising physical contrast. NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
