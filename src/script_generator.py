@@ -118,14 +118,14 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDER
 {avoid_block}
 
 {adaptation_block}STRICT REQUIREMENTS:
-1. **Length (~21 seconds total)**: STRICTLY **45 to 54 words TOTAL** INCLUDING the final closing line **"Don't forget to like and subscribe!"** (~19 to 22 seconds spoken). NEVER exceed 58 words.
+1. **Length (~18-21 seconds total)**: STRICTLY **42 to 52 words TOTAL** (~18 to 21 seconds spoken). NEVER exceed 55 words. Zero fluff, zero filler, zero "like and subscribe" begging.
 {hook_rule}
-3. **Complete Final Sentence + CTA**: Finish the full science explanation cleanly, then end the final beat with **"Don't forget to like and subscribe!"**.
-4. **Fast-Paced Relevant & 100% Family-Safe Real-Video Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~6-8 words each = ~2.2-2.8 seconds per cut).
+3. **Mid-Video Retention Reset & Engagement Closer**: Around Beat 4 (~second 9–10), inject a sharp micro-twist ("But here is the wild part...", "Until one thing flips...", "And that is when...") to reset viewer attention. On the final beat, deliver a crisp, jaw-dropping final reveal or punchy 4-to-6-word curiosity question that sparks comments or rewatches (e.g., "Would you dare touch it?" or "And it is still growing today."). NEVER say "Don't forget to like and subscribe", "follow for more", or "thanks for watching".
+4. **Fast-Paced Relevant & 100% Family-Safe Real-Video Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~5-7 words each = ~2.1-2.8 seconds per cut).
    - **STRICT SAFETY**: Every topic and `search_query` MUST be 100% G-rated, family-friendly, and YouTube-safe (NO nudity, NO graphic anatomy/surgery/blood, NO violence, NO people/crowds/sports).
    - **CRITICAL FOR BEAT 1 (OPENING HOOK)**: `search_query` MUST be vivid, dramatic real-world nature/space/science/lab footage (e.g. "volcano lava eruption", "lightning storm earth", "ocean coral reef", "sun solar flare", "aurora borealis space", "water droplet microgravity"). NEVER choose queries that return title screens, slides, text graphics, diagrams, or people talking.
    - Every beat's `search_query` (2-3 concrete English nouns/verbs) MUST directly match the physical object or phenomenon being spoken about in that exact beat.
-   - NEVER use "subscribe button", "like and subscribe", "text", "diagram", or "person..." as `search_query` — even for the final CTA beat, always use a vivid closing science/nature visual matching the topic.
+   - NEVER use "subscribe button", "like and subscribe", "text", "diagram", or "person..." as `search_query` — even for the final closing beat, always use a vivid closing science/nature visual matching the topic.
 5. **Strict Scientific Fact-Check**: Double-check EVERY number, unit, cause-and-effect claim, and scientific term before outputting. Zero myths, zero exaggerations, zero hallucinations—100% peer-reviewed scientific accuracy!
 6. **Metadata**:
    - `title`: Crisp Title Case YouTube Shorts title under 65 chars, ending with #shorts, built around a concrete curiosity gap or surprising physical contrast. NEVER end with "Explained", NEVER use dry textbook phrasing like "The Physics of..." or "Why Pure Water...", and NEVER start with flat "It...".
