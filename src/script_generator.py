@@ -118,7 +118,7 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THE SAME UNDER
 {avoid_block}
 
 {adaptation_block}STRICT REQUIREMENTS:
-1. **Length (~21 seconds total)**: The science explanation MUST be **48 to 56 words** (~20 seconds), followed by a quick 1-second closing line: **"Don't forget to like and subscribe!"** (so total script is ~54 to 62 words = ~21 seconds).
+1. **Length (~21 seconds total)**: STRICTLY **45 to 54 words TOTAL** INCLUDING the final closing line **"Don't forget to like and subscribe!"** (~19 to 22 seconds spoken). NEVER exceed 58 words.
 {hook_rule}
 3. **Complete Final Sentence + CTA**: Finish the full science explanation cleanly, then end the final beat with **"Don't forget to like and subscribe!"**.
 4. **Fast-Paced Relevant & 100% Family-Safe Real-Video Visuals (7 to 9 beats)**: Split the narration into **7 to 9 beats** (~6-8 words each = ~2.2-2.8 seconds per cut).
