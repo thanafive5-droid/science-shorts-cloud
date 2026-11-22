@@ -191,11 +191,12 @@ def load_channel_strategy(channel_id: str) -> dict[str, Any]:
         return {}
 
 
-def build_adaptation_prompt_block(channel_id: str, youtube_handle: str) -> str:
-    """Build a concise prompt block combining live YouTube view feedback + manual strategy."""
+def build_adaptation_context(channel_id: str, youtube_handle: str) -> tuple[str, list[str]]:
+    """Return (adaptation_prompt_block, published_short_titles) from one live channel fetch."""
     lines: list[str] = []
 
-    perf = analyze_channel_performance(youtube_handle, limit=18)
+    perf = analyze_channel_performance(youtube_handle, limit=30)
+    published_titles = [s.title for s in perf.shorts if s.title]
     if perf.top_shorts:
         top_str = "; ".join(f'"{s.title}" ({s.views:,} views)' for s in perf.top_shorts)
         lines.append(f"- TOP PERFORMING SHORTS on this channel: {top_str}.")
@@ -223,7 +224,7 @@ def build_adaptation_prompt_block(channel_id: str, youtube_handle: str) -> str:
         lines.append(f"- CHANNEL DIRECTIVE: {strat['extra_directive']}")
 
     if not lines:
-        return ""
+        return "", published_titles
     logger.info(
         "View adaptation for [%s]: %d Shorts analyzed, median=%.0f, trend=%s",
         channel_id,
@@ -231,4 +232,12 @@ def build_adaptation_prompt_block(channel_id: str, youtube_handle: str) -> str:
         perf.median_views,
         perf.trend,
     )
-    return "LIVE AUDIENCE VIEW ADAPTATION (optimize for retention & views):\n" + "\n".join(lines) + "\n"
+    return (
+        "LIVE AUDIENCE VIEW ADAPTATION (optimize for retention & views):\n" + "\n".join(lines) + "\n",
+        published_titles,
+    )
+
+
+def build_adaptation_prompt_block(channel_id: str, youtube_handle: str) -> str:
+    """Build a concise prompt block combining live YouTube view feedback + manual strategy."""
+    return build_adaptation_context(channel_id, youtube_handle)[0]
