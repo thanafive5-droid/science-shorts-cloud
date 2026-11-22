@@ -70,12 +70,14 @@ class ShortsPipeline:
                 )
 
                 queries = [beat.search_query for beat in script.beats]
-                raw_clips = await self.media.fetch_clips_for_beats(
+                past_clips = self.db.get_recent_clip_ids(channel_id, limit=500)
+                raw_clips, used_clip_ids = await self.media.fetch_clips_for_beats(
                     queries=queries,
                     output_dir=job_dir / "clips",
                     fallback_query=f"{channel.display_name.lower()} science",
                     nasa_ratio=channel.nasa_ratio,
                     allow_animations=channel.allow_animations,
+                    previously_used_ids=past_clips,
                 )
 
                 final_video = job_dir / "final_short.mp4"
@@ -92,6 +94,7 @@ class ShortsPipeline:
                     reason = "DRY_RUN=true" if self.settings.dry_run else "missing YouTube OAuth env vars"
                     logger.warning("Skipping upload for [%s] (%s)", channel_id, reason)
                     self.db.mark_topic_used(channel_id, topic)
+                    self.db.mark_clips_used(channel_id, used_clip_ids)
                     self.db.record_post(
                         channel_id=channel_id,
                         topic=topic,
@@ -110,6 +113,7 @@ class ShortsPipeline:
                         script.tags,
                     )
                     self.db.mark_topic_used(channel_id, topic)
+                    self.db.mark_clips_used(channel_id, used_clip_ids)
                     self.db.record_post(
                         channel_id=channel_id,
                         topic=topic,
