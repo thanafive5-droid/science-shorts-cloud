@@ -27,6 +27,7 @@ class ChannelConfig:
     fallback_visual_queries: tuple[str, ...] = ()
     max_daily_uploads: int = 3
     min_interval_hours: float = 7.5
+    preferred_ict_hours: tuple[int, ...] = (0, 8, 16)
 
 
 CHANNELS: dict[str, ChannelConfig] = {
@@ -47,6 +48,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         cut_min_sec=2.1,
         cut_max_sec=3.0,
         bgm_volume=0.38,
+        preferred_ict_hours=(0, 8, 16),
         fallback_visual_queries=(
             "physics experiment magnet",
             "laser light prism",
@@ -72,6 +74,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         cut_min_sec=2.1,
         cut_max_sec=3.0,
         bgm_volume=0.40,
+        preferred_ict_hours=(4, 12, 20),
         fallback_visual_queries=(
             "chemical reaction laboratory",
             "bismuth crystal rainbow",
@@ -98,6 +101,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         cut_min_sec=2.2,
         cut_max_sec=3.2,
         bgm_volume=0.36,
+        preferred_ict_hours=(0, 8, 16),
         fallback_visual_queries=(
             "coral reef underwater fish",
             "bioluminescent ocean jellyfish",
@@ -124,6 +128,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         cut_min_sec=2.1,
         cut_max_sec=3.0,
         bgm_volume=0.38,
+        preferred_ict_hours=(0, 8, 16),
         fallback_visual_queries=(
             "science laboratory experiment",
             "aurora borealis night sky",
@@ -150,6 +155,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         cut_min_sec=2.2,
         cut_max_sec=3.2,
         bgm_volume=0.38,
+        preferred_ict_hours=(4, 12, 20),
         fallback_visual_queries=(
             "volcano lava eruption",
             "glacier ice canyon",
@@ -176,6 +182,7 @@ CHANNELS: dict[str, ChannelConfig] = {
         cut_min_sec=2.3,
         cut_max_sec=3.3,
         bgm_volume=0.40,
+        preferred_ict_hours=(4, 12, 20),
         fallback_visual_queries=(
             "spiral galaxy nebula telescope",
             "jupiter planet space",
