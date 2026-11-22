@@ -3,6 +3,7 @@
 import array
 import logging
 import math
+import random
 import subprocess
 import wave
 from pathlib import Path
@@ -24,8 +25,14 @@ def _format_ass_time(seconds: float) -> str:
 
 
 def build_ass_subtitles(words: list[WordTiming], ass_path: Path) -> Path:
-    """Group words into character-bounded Shorts captions in ASS format so lines never clip."""
-    header = """[Script Info]
+    """Group words into character-bounded kinetic highlight captions with 4 rotated themes."""
+    accent_color, margin_v = random.SystemRandom().choice([
+        ("&H0000FFFF", 400),  # Bright Yellow highlight
+        ("&H00FFFF00", 435),  # Electric Cyan highlight
+        ("&H0066FF66", 390),  # Vibrant Lime/Mint highlight
+        ("&H0000AAFF", 420),  # Warm Gold/Orange highlight
+    ])
+    header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
@@ -33,7 +40,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVu Sans,62,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,100,130,400,1
+Style: Default,DejaVu Sans,62,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,100,130,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -55,11 +62,25 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if current:
         groups.append(current)
 
-    for group in groups:
-        start = _format_ass_time(group[0].start_sec)
-        end = _format_ass_time(group[-1].end_sec + 0.08)
-        text = " ".join(w.text for w in group).upper().replace("{", "").replace("}", "")
-        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
+    for g_idx, group in enumerate(groups):
+        group_end = group[-1].end_sec + 0.08
+        if g_idx + 1 < len(groups):
+            group_end = min(group_end, groups[g_idx + 1][0].start_sec)
+        tokens = [w.text.upper().replace("{", "").replace("}", "") for w in group]
+        for w_idx, w in enumerate(group):
+            w_start = w.start_sec
+            w_end = group[w_idx + 1].start_sec if w_idx + 1 < len(group) else group_end
+            if w_end <= w_start:
+                w_end = w_start + 0.08
+            rendered = []
+            for k, tok in enumerate(tokens):
+                if k == w_idx:
+                    rendered.append(rf"{{\c{accent_color}&\fscx108\fscy108}}{tok}{{\r}}")
+                else:
+                    rendered.append(tok)
+            lines.append(
+                f"Dialogue: 0,{_format_ass_time(w_start)},{_format_ass_time(w_end)},Default,,0,0,0,,{' '.join(rendered)}\n"
+            )
 
     ass_path.write_text("".join(lines), encoding="utf-8")
     return ass_path
@@ -189,12 +210,23 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
         ) * math.exp(-9.0 * step_t) * 0.34
         hihat = (rng.uniform(-1.0, 1.0) * math.exp(-65.0 * step_t) * 0.14) if (step_idx % 2 == 1) else 0.0
 
-        val = (0.42 * pad * chord_env) + kick + bass + arp + hihat
+        bed = (0.42 * pad * chord_env) + kick + bass + arp + hihat
 
         if i < fade_in:
-            val *= i / fade_in
+            bed *= i / fade_in
         elif i > total_samples - fade_out:
-            val *= max(0.0, (total_samples - i) / fade_out)
+            bed *= max(0.0, (total_samples - i) / fade_out)
+
+        hook_sfx = 0.0
+        if t < 0.28:
+            # Immediate Frame-1 audio hook impact (punchy sub-drop + subtle air transient)
+            hook_env = math.exp(-11.0 * t)
+            hook_freq = 48.0 + 135.0 * math.exp(-26.0 * t)
+            hook_sfx = (
+                math.sin(two_pi * hook_freq * t) * hook_env * 0.65
+                + rng.uniform(-1.0, 1.0) * math.exp(-18.0 * t) * 0.20
+            )
+        val = bed + hook_sfx
 
         # Soft saturation for fuller perceived loudness on mobile speakers
         val = math.tanh(val * 1.15)
