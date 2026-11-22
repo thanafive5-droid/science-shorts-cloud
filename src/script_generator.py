@@ -8,6 +8,7 @@ from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from src.analytics_adapter import build_adaptation_prompt_block
 from src.config import ChannelConfig
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,8 @@ class ScriptGenerator:
             "ending in a complete, punchy final sentence."
         )
 
+        adaptation_block = build_adaptation_prompt_block(channel.id, channel.youtube_handle)
+
         prompt = f"""
 Create ONE brand-new YouTube Short script for the **{channel.display_name}** channel.
 Channel niche: {channel.niche_description}
@@ -104,7 +107,7 @@ Channel niche: {channel.niche_description}
 TOPICS ALREADY USED (DO NOT REPEAT OR CLOSELY PARAPHRASE THESE):
 {avoid_block}
 
-STRICT REQUIREMENTS:
+{adaptation_block}STRICT REQUIREMENTS:
 1. **Length (~21 seconds total)**: The science explanation MUST be **48 to 56 words** (~20 seconds), followed by a quick 1-second closing line: **"Don't forget to like and subscribe!"** (so total script is ~54 to 62 words = ~21 seconds).
 {hook_rule}
 3. **Complete Final Sentence + CTA**: Finish the full science explanation cleanly, then end the final beat with **"Don't forget to like and subscribe!"**.
