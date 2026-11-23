@@ -89,7 +89,7 @@ class VisualSafetyFilter:
             "2. Mostly text on a plain background, title card, slide, book page, or logo screen.\n"
             "3. Random people talking, crowds, sports stadium, news studio, or political speech.\n"
             f"{rule_4}\n"
-            "5. Visually UNRELATED to its requested topic, or blank/black/very dark frame.\n\n"
+            "5. Visually UNRELATED to its requested topic, wrong-category/homonym mismatch (e.g. a bird/cockatoo when the query asks for a parrotfish/underwater fish, or a random unrelated object), or blank/black/very dark frame.\n\n"
             "Return ONLY a JSON object: {\"results\": [{\"index\": 0, \"safe\": true/false, \"reason\": \"short reason\"}, ...]}\n"
         )
         parts.append(header)
