@@ -415,7 +415,7 @@ class MediaFetcher:
                         logger.warning("REJECTED clip %s for '%s': %s", vid, raw_q, reason)
                         temp_path.unlink(missing_ok=True)
 
-            # Emergency safe NASA fallback only up to max_nasa, then channel Wikimedia photo fallback, then round-robin reuse
+            # Emergency safe NASA fallback only up to max_nasa, then Vision-verified Wikimedia photo fallback, then round-robin reuse
             fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
             random.shuffle(fb_list)
             ch_fb = list(fallback_queries) if fallback_queries else [fallback_query]
@@ -425,57 +425,85 @@ class MediaFetcher:
             photo_fb_queries = ch_fb + diverse_fb
 
             initial_verified = [c for c in chosen if c is not None]
-            reuse_idx = 0
 
+            for idx, item in enumerate(chosen):
+                if item is not None or nasa_count >= max_nasa:
+                    continue
+                for fb in fb_list:
+                    for vid, url in await self._search_nasa(client, fb):
+                        if vid not in used_ids:
+                            used_ids.add(vid)
+                            final_path = output_dir / f"raw_{idx:02d}.mp4"
+                            await self._download_file(client, url, final_path)
+                            chosen[idx] = (final_path, True, vid)
+                            nasa_count += 1
+                            break
+                    if chosen[idx] is not None:
+                        break
+
+            fb_downloads: list[tuple[int, Path, str, str]] = []
             for idx, item in enumerate(chosen):
                 if item is not None:
                     continue
-                if nasa_count < max_nasa:
-                    for fb in fb_list:
-                        for vid, url in await self._search_nasa(client, fb):
-                            if vid not in used_ids:
-                                used_ids.add(vid)
-                                final_path = output_dir / f"raw_{idx:02d}.mp4"
-                                await self._download_file(client, url, final_path)
-                                chosen[idx] = (final_path, True, vid)
-                                nasa_count += 1
+                downloaded_fb = False
+                for fb_q in photo_fb_queries:
+                    for vid, url in await self._search_wikimedia_photos(client, fb_q):
+                        if vid not in used_ids:
+                            used_ids.add(vid)
+                            temp_path = output_dir / f"fb_{idx:02d}_{vid}.jpg"
+                            try:
+                                await self._download_file(client, url, temp_path)
+                                fb_downloads.append((idx, temp_path, fb_q, vid))
+                                downloaded_fb = True
                                 break
-                        if chosen[idx] is not None:
-                            break
-                if chosen[idx] is None:
-                    for fb_q in photo_fb_queries:
-                        for vid, url in await self._search_wikimedia_photos(client, fb_q):
-                            if vid not in used_ids:
-                                used_ids.add(vid)
-                                final_path = output_dir / f"raw_{idx:02d}.jpg"
-                                try:
-                                    await self._download_file(client, url, final_path)
-                                    chosen[idx] = (final_path, False, vid)
-                                    break
-                                except Exception as exc:
-                                    logger.warning("Fallback photo download failed for %s: %s", vid, exc)
-                                    final_path.unlink(missing_ok=True)
-                        if chosen[idx] is not None:
-                            break
-                if chosen[idx] is None:
-                    base_pool = initial_verified if len(initial_verified) >= 2 else [c for c in chosen if c is not None]
-                    if nasa_ratio < 0.4:
-                        non_nasa_pool = [c for c in base_pool if not c[1]]
-                        pick_pool = non_nasa_pool if non_nasa_pool else base_pool
+                            except Exception as exc:
+                                logger.warning("Fallback photo download failed for %s: %s", vid, exc)
+                                temp_path.unlink(missing_ok=True)
+                    if downloaded_fb:
+                        break
+
+            if fb_downloads:
+                if self.safety_filter is not None:
+                    fb_verdicts = await asyncio.to_thread(
+                        self.safety_filter.check_batch,
+                        [(p, q) for _, p, q, _ in fb_downloads],
+                        output_dir,
+                        allow_animations=allow_animations,
+                    )
+                else:
+                    fb_verdicts = [(True, "ok")] * len(fb_downloads)
+
+                for (idx, temp_path, fb_q, vid), (ok, reason) in zip(fb_downloads, fb_verdicts):
+                    if ok:
+                        final_path = output_dir / f"raw_{idx:02d}.jpg"
+                        temp_path.replace(final_path)
+                        chosen[idx] = (final_path, False, vid)
                     else:
-                        pick_pool = base_pool
-                    if len(base_pool) >= 2:
-                        fallback_pick = pick_pool[reuse_idx % len(pick_pool)]
-                        reuse_idx += 1
-                        chosen[idx] = fallback_pick
-                        logger.warning(
-                            "Beat %d ('%s') reused verified safe visual %s round-robin after fallback passes",
-                            idx,
-                            queries[idx],
-                            fallback_pick[2],
-                        )
-                    else:
-                        raise RuntimeError(f"Could not find any safe visual for beat {idx}: '{queries[idx]}'")
+                        logger.warning("REJECTED fallback photo %s for '%s': %s", vid, fb_q, reason)
+                        temp_path.unlink(missing_ok=True)
+
+            reuse_idx = 0
+            for idx, item in enumerate(chosen):
+                if item is not None:
+                    continue
+                base_pool = initial_verified if len(initial_verified) >= 2 else [c for c in chosen if c is not None]
+                if nasa_ratio < 0.4:
+                    non_nasa_pool = [c for c in base_pool if not c[1]]
+                    pick_pool = non_nasa_pool if non_nasa_pool else base_pool
+                else:
+                    pick_pool = base_pool
+                if len(base_pool) >= 2:
+                    fallback_pick = pick_pool[reuse_idx % len(pick_pool)]
+                    reuse_idx += 1
+                    chosen[idx] = fallback_pick
+                    logger.warning(
+                        "Beat %d ('%s') reused verified safe visual %s round-robin after fallback passes",
+                        idx,
+                        queries[idx],
+                        fallback_pick[2],
+                    )
+                else:
+                    raise RuntimeError(f"Could not find any safe visual for beat {idx}: '{queries[idx]}'")
 
         downloaded = [c[0] for c in chosen if c is not None]
         newly_used_ids = [c[2] for c in chosen if c is not None]
