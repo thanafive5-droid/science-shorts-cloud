@@ -17,10 +17,12 @@
   "chemistry": {
     "focus_topics": [
       "extreme visible thermal or phase-change contrasts (burning-hot ice, rainbow crystal metals, liquid metals)",
+      "hydrophobic sand and instant liquid-to-solid polymer reactions",
       "dramatic fiery, luminous, hydrophobic, or self-healing material transformations",
       "shocking hidden chemistry inside everyday solids and liquids"
     ],
     "avoid_angles": [
+      "repeating alkali metals / sodium or potassium exploding in water",
       "invisible gases or invisible timers that look empty on camera",
       "mild 'changes color' phrasing without extreme stakes",
       "overused 'world's strongest acid' clichés"
@@ -30,7 +32,7 @@
   },
   "biology": {
     "focus_topics": [
-      "deep-ocean predators, camouflage masters, and marine bioluminescence",
+      "deep-ocean predators, iron-armored sea snails, bullet-force shrimp, blinding predators, and marine bioluminescence",
       "extreme insect weapons and survival superpowers (boiling sprays, supersonic snaps, regeneration)",
       "carnivorous, resurrection, and extreme-environment plants"
     ],
@@ -40,15 +42,16 @@
       "repeating immortal jellyfish / animals that never grow old"
     ],
     "hook_style": "Spotlight one concrete organism's real superpower: 'The Ocean's [Archetype]' or 'The [Creature/Plant] That [Shocking Real Action]!'",
-    "extra_directive": "Focus 100% on wild animals, marine life, insects, microbes, and extreme plants with concrete shocking comparisons (e.g., louder than a jet, fires boiling liquid)."
+    "extra_directive": "Focus 100% on wild animals, marine life, insects, microbes, and extreme plants with concrete shocking comparisons (e.g., louder than a jet, hits harder than a bullet)."
   },
   "general_science": {
     "focus_topics": [
-      "rule-breaking physical wonders (defying gravity, breaking light speed in water, sonoluminescence)",
+      "rule-breaking physical wonders and visible fluid/chemistry/nature puzzles (defying gravity, liquid droplet mazes, breaking light speed in water, sonoluminescence)",
       "jaw-dropping prehistoric and planetary science shocks (natural nuclear reactors, ancient atmospheric events)",
       "counterintuitive survival or danger physics myth-busts (liquid nitrogen Leidenfrost, extreme materials)"
     ],
     "avoid_angles": [
+      "invisible atmospheric or air-pressure concepts that look empty on camera",
       "dry textbook titles ending in 'Explained' or starting with 'Why Water...'",
       "mundane everyday gadget trivia or vague 'also a gas' phrasing",
       "repeating supercooled water, gallium melting in hand, or Mpemba effect"
@@ -58,8 +61,8 @@
   },
   "earth_science": {
     "focus_topics": [
-      "hidden deep-Earth structures (LLSVPs, underground oceans, ancient mantle anomalies)",
-      "extreme volcanic, tectonic, glacial, and deep-trench phenomena (underwater waterfalls, blue-lava volcanoes, mega-caverns)",
+      "hidden deep-Earth structures (sleeping supervolcanoes, underground oceans, ancient mantle anomalies)",
+      "extreme volcanic, tectonic, glacial, and deep-trench phenomena (melting-iceberg earthquakes, blue-fire lava, underwater waterfalls, mega-caverns)",
       "epic prehistoric Earth events and bizarre geological time capsules"
     ],
     "avoid_angles": [
@@ -71,15 +74,16 @@
   },
   "astronomy": {
     "focus_topics": [
-      "extreme and lethal cosmic objects (magnetars, hypervelocity stars, vampire stars, tidal disruption events)",
-      "bizarre exoplanets (molten iron/glass rain, eyeball worlds, pitch-black planets, rogue worlds)",
+      "active violent cosmic events (planet-devouring stars, hypervelocity rogue stars, magnetars, tidal disruption events)",
+      "bizarre exoplanets (molten iron/glass rain, pitch-black planets, rogue worlds)",
       "mind-bending deep-space mysteries (Boötes Void, neutron star mountains, gravitational lensing, JWST anomalies)"
     ],
     "avoid_angles": [
+      "vague tidally locked 'staring back' eyeball-world titles",
       "overdone basic trivia like Neptune diamond rain or 'more stars than grains of sand'",
       "flat declarative titles starting with 'It...'"
     ],
-    "hook_style": "Use high-stakes cosmic titles: 'The Alien World That [Extreme Phenomenon]', 'The Dead Star That [Lethal Action]', or 'The Most Terrifying [Object] in Space'",
+    "hook_style": "Use high-stakes cosmic titles: 'The Alien World That [Extreme Phenomenon]', 'The Dead Star That [Lethal Action]', or 'The Star That [Violent Cosmic Verb]'",
     "extra_directive": "Maximize cosmic scale and danger/wonder in the first 2 seconds; pair vivid deep-space NASA/observatory visuals with surprising astrophysical numbers."
   }
 }
