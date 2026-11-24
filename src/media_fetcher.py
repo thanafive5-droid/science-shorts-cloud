@@ -441,58 +441,61 @@ class MediaFetcher:
                     if chosen[idx] is not None:
                         break
 
-            fb_downloads: list[tuple[int, Path, str, str]] = []
-            for idx, item in enumerate(chosen):
-                if item is not None:
-                    continue
-                downloaded_fb = False
-                for fb_q in photo_fb_queries:
-                    for vid, url in await self._search_wikimedia_photos(client, fb_q):
-                        if vid not in used_ids:
-                            used_ids.add(vid)
-                            temp_path = output_dir / f"fb_{idx:02d}_{vid}.jpg"
-                            try:
-                                await self._download_file(client, url, temp_path)
-                                fb_downloads.append((idx, temp_path, fb_q, vid))
-                                downloaded_fb = True
-                                break
-                            except Exception as exc:
-                                logger.warning("Fallback photo download failed for %s: %s", vid, exc)
-                                temp_path.unlink(missing_ok=True)
-                    if downloaded_fb:
-                        break
+            for fb_attempt in range(2):
+                if not any(c is None for c in chosen):
+                    break
+                fb_downloads: list[tuple[int, Path, str, str]] = []
+                for idx, item in enumerate(chosen):
+                    if item is not None:
+                        continue
+                    downloaded_fb = False
+                    for fb_q in photo_fb_queries:
+                        for vid, url in await self._search_wikimedia_photos(client, fb_q):
+                            if vid not in used_ids:
+                                used_ids.add(vid)
+                                temp_path = output_dir / f"fb_{fb_attempt}_{idx:02d}_{vid}.jpg"
+                                try:
+                                    await self._download_file(client, url, temp_path)
+                                    fb_downloads.append((idx, temp_path, fb_q, vid))
+                                    downloaded_fb = True
+                                    break
+                                except Exception as exc:
+                                    logger.warning("Fallback photo download failed for %s: %s", vid, exc)
+                                    temp_path.unlink(missing_ok=True)
+                        if downloaded_fb:
+                            break
 
-            if fb_downloads:
-                if self.safety_filter is not None:
-                    fb_verdicts = await asyncio.to_thread(
-                        self.safety_filter.check_batch,
-                        [(p, q) for _, p, q, _ in fb_downloads],
-                        output_dir,
-                        allow_animations=allow_animations,
-                    )
-                else:
-                    fb_verdicts = [(True, "ok")] * len(fb_downloads)
-
-                for (idx, temp_path, fb_q, vid), (ok, reason) in zip(fb_downloads, fb_verdicts):
-                    if ok:
-                        final_path = output_dir / f"raw_{idx:02d}.jpg"
-                        temp_path.replace(final_path)
-                        chosen[idx] = (final_path, False, vid)
+                if fb_downloads:
+                    if self.safety_filter is not None:
+                        fb_verdicts = await asyncio.to_thread(
+                            self.safety_filter.check_batch,
+                            [(p, q) for _, p, q, _ in fb_downloads],
+                            output_dir,
+                            allow_animations=allow_animations,
+                        )
                     else:
-                        logger.warning("REJECTED fallback photo %s for '%s': %s", vid, fb_q, reason)
-                        temp_path.unlink(missing_ok=True)
+                        fb_verdicts = [(True, "ok")] * len(fb_downloads)
+
+                    for (idx, temp_path, fb_q, vid), (ok, reason) in zip(fb_downloads, fb_verdicts):
+                        if ok:
+                            final_path = output_dir / f"raw_{idx:02d}.jpg"
+                            temp_path.replace(final_path)
+                            chosen[idx] = (final_path, False, vid)
+                        else:
+                            logger.warning("REJECTED fallback photo %s for '%s': %s", vid, fb_q, reason)
+                            temp_path.unlink(missing_ok=True)
 
             reuse_idx = 0
             for idx, item in enumerate(chosen):
                 if item is not None:
                     continue
-                base_pool = initial_verified if len(initial_verified) >= 2 else [c for c in chosen if c is not None]
+                base_pool = initial_verified if len(initial_verified) >= 1 else [c for c in chosen if c is not None]
                 if nasa_ratio < 0.4:
                     non_nasa_pool = [c for c in base_pool if not c[1]]
                     pick_pool = non_nasa_pool if non_nasa_pool else base_pool
                 else:
                     pick_pool = base_pool
-                if len(base_pool) >= 2:
+                if len(base_pool) >= 1:
                     fallback_pick = pick_pool[reuse_idx % len(pick_pool)]
                     reuse_idx += 1
                     chosen[idx] = fallback_pick
