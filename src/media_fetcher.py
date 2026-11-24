@@ -37,6 +37,9 @@ BLOCKED_WORDS = (
     "map", "page", "scan", "pdf", "poster", "flag", "coat_of_arms",
     "signature", "portrait", "museum", "building", "street", "table",
     "schema", "illustration", "drawing", "sketch", "game", "gameplay",
+    # Captive/food/vintage noise
+    "cage", "zoo", "captive", "seafood", "chopped", "cooked", "recipe",
+    "food", "meal", "dish", "vintage", "menu", "restaurant", "market",
 )
 
 ANIMATION_ONLY_BLOCKED = ("animation", "animated", "simulation", "cgi", "render")
@@ -185,7 +188,7 @@ class MediaFetcher:
                     "generator": "search",
                     "gsrnamespace": "6",
                     "gsrsearch": f"filetype:bitmap {query}",
-                    "gsrlimit": "12",
+                    "gsrlimit": "30",
                     "prop": "imageinfo",
                     "iiprop": "url|mime|size|dimensions",
                     "iiurlwidth": "1280",
@@ -212,9 +215,55 @@ class MediaFetcher:
                 if url and mime in ("image/jpeg", "image/png") and w >= 720 and h >= 540:
                     scored.append((score, f"wmimg_{page_id}", url))
             scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
-            return [(vid, url) for _, vid, url in scored[:4]]
+            return [(vid, url) for _, vid, url in scored[:12]]
         except Exception as exc:
             logger.warning("Wikimedia photo search failed for '%s': %s", query, exc)
+            return []
+
+    async def _search_openverse_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
+        """Search keyless Openverse Creative Commons photo API for diverse science/nature photography."""
+        try:
+            resp = await client.get(
+                "https://api.openverse.org/v1/images/",
+                headers={"User-Agent": USER_AGENT},
+                params={
+                    "q": query,
+                    "category": "photograph",
+                    "mature": "false",
+                    "page_size": "15",
+                },
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            items = resp.json().get("results", [])
+            scored: list[tuple[int, str, str]] = []
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
+            for item in items:
+                oid = item.get("id")
+                title = str(item.get("title") or "")
+                if not oid or not _is_safe_text(title, allow_animations=False):
+                    continue
+                w = item.get("width") or 0
+                h = item.get("height") or 0
+                if w < 720 or h < 540:
+                    continue
+                raw_url = str(item.get("url") or "")
+                thumb_url = str(item.get("thumbnail") or "")
+                low_url = raw_url.lower()
+                if any(ext in low_url for ext in (".jpg", ".jpeg", ".png")):
+                    img_url = raw_url
+                elif thumb_url.startswith("http"):
+                    img_url = thumb_url
+                else:
+                    continue
+                score = _relevance_score(title, query_terms)
+                if query_terms and score == 0:
+                    continue
+                scored.append((score, str(oid), img_url))
+            scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
+            return [(f"ov_{oid}", img_url) for _, oid, img_url in scored[:8]]
+        except Exception as exc:
+            logger.warning("Openverse photo search failed for '%s': %s", query, exc)
             return []
 
     async def _search_archive(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
@@ -415,7 +464,7 @@ class MediaFetcher:
                         logger.warning("REJECTED clip %s for '%s': %s", vid, raw_q, reason)
                         temp_path.unlink(missing_ok=True)
 
-            # Emergency safe NASA fallback only up to max_nasa, then Vision-verified Wikimedia photo fallback, then round-robin reuse
+            # Emergency safe NASA fallback only up to max_nasa, then per-beat rotated Vision-verified photo fallback
             fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
             random.shuffle(fb_list)
             ch_fb = list(fallback_queries) if fallback_queries else [fallback_query]
@@ -423,8 +472,6 @@ class MediaFetcher:
             diverse_fb = list(DIVERSE_FALLBACK_QUERIES)
             random.shuffle(diverse_fb)
             photo_fb_queries = ch_fb + diverse_fb
-
-            initial_verified = [c for c in chosen if c is not None]
 
             for idx, item in enumerate(chosen):
                 if item is not None or nasa_count >= max_nasa:
@@ -448,9 +495,13 @@ class MediaFetcher:
                 for idx, item in enumerate(chosen):
                     if item is not None:
                         continue
+                    offset = (idx + fb_attempt * 3) % len(photo_fb_queries)
+                    rotated_queries = photo_fb_queries[offset:] + photo_fb_queries[:offset]
                     downloaded_fb = False
-                    for fb_q in photo_fb_queries:
-                        for vid, url in await self._search_wikimedia_photos(client, fb_q):
+                    for fb_q in rotated_queries:
+                        wm_cands = await self._search_wikimedia_photos(client, fb_q)
+                        ov_cands = await self._search_openverse_photos(client, fb_q)
+                        for vid, url in [*wm_cands, *ov_cands]:
                             if vid not in used_ids:
                                 used_ids.add(vid)
                                 temp_path = output_dir / f"fb_{fb_attempt}_{idx:02d}_{vid}.jpg"
@@ -485,31 +536,30 @@ class MediaFetcher:
                             logger.warning("REJECTED fallback photo %s for '%s': %s", vid, fb_q, reason)
                             temp_path.unlink(missing_ok=True)
 
-            reuse_idx = 0
-            for idx, item in enumerate(chosen):
-                if item is not None:
-                    continue
-                base_pool = initial_verified if len(initial_verified) >= 1 else [c for c in chosen if c is not None]
-                if nasa_ratio < 0.4:
-                    non_nasa_pool = [c for c in base_pool if not c[1]]
-                    pick_pool = non_nasa_pool if non_nasa_pool else base_pool
-                else:
-                    pick_pool = base_pool
-                if len(base_pool) >= 1:
-                    fallback_pick = pick_pool[reuse_idx % len(pick_pool)]
-                    reuse_idx += 1
-                    chosen[idx] = fallback_pick
-                    logger.warning(
-                        "Beat %d ('%s') reused verified safe visual %s round-robin after fallback passes",
-                        idx,
-                        queries[idx],
-                        fallback_pick[2],
-                    )
-                else:
-                    raise RuntimeError(f"Could not find any safe visual for beat {idx}: '{queries[idx]}'")
+        # Strict zero-duplicate enforcement: drop unfilled beats rather than ever reusing a clip
+        downloaded: list[Path] = []
+        newly_used_ids: list[str] = []
+        seen_paths: set[Path] = set()
+        seen_vids: set[str] = set()
+        for item in chosen:
+            if item is None:
+                continue
+            path, _is_nasa, vid = item
+            if path in seen_paths or vid in seen_vids:
+                continue
+            seen_paths.add(path)
+            seen_vids.add(vid)
+            downloaded.append(path)
+            newly_used_ids.append(vid)
 
-        downloaded = [c[0] for c in chosen if c is not None]
-        newly_used_ids = [c[2] for c in chosen if c is not None]
+        min_unique = min(len(queries), 5)
+        if len(downloaded) < min_unique:
+            raise RuntimeError(
+                f"Only {len(downloaded)} unique safe visuals found (minimum {min_unique} required to prevent repetition)"
+            )
+
+        assert len(downloaded) == len(set(downloaded))
+        assert len(newly_used_ids) == len(set(newly_used_ids))
         logger.info(
             "Downloaded %d unique AI-verified visuals (%d NASA / %d diverse non-NASA, skipped %d past clips)",
             len(downloaded),
@@ -532,11 +582,14 @@ class MediaFetcher:
     ) -> list[tuple[str, str, bool]]:
         """Return prioritized list of (vid, url, is_nasa) including real videos + sharp topic photos."""
         if photos_only:
-            return [
-                (vid, url, False)
-                for vid, url in await self._search_wikimedia_photos(client, query)
-                if vid not in used_ids
-            ]
+            wm = [(v, u, False) for v, u in await self._search_wikimedia_photos(client, query) if v not in used_ids]
+            ov = [(v, u, False) for v, u in await self._search_openverse_photos(client, query) if v not in used_ids]
+            interleaved: list[tuple[str, str, bool]] = []
+            for a, b in zip(wm, ov):
+                interleaved.extend([a, b])
+            interleaved.extend(wm[len(ov) :])
+            interleaved.extend(ov[len(wm) :])
+            return interleaved
 
         non_nasa: list[tuple[str, str, bool]] = []
         nasa_list: list[tuple[str, str, bool]] = []
@@ -566,6 +619,9 @@ class MediaFetcher:
 
         if include_photos:
             for vid, url in await self._search_wikimedia_photos(client, query):
+                if vid not in used_ids:
+                    non_nasa.append((vid, url, False))
+            for vid, url in await self._search_openverse_photos(client, query):
                 if vid not in used_ids:
                     non_nasa.append((vid, url, False))
 
