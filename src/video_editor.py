@@ -270,38 +270,30 @@ class VideoEditor:
         cut_max_sec: float = 3.2,
         bgm_volume: float = 0.38,
     ) -> Path:
-        """Trim each clip to ~2-3s, concat, burn captions, and mux voiceover."""
+        """Trim each clip once (zero repeats), concat, burn captions, and mux voiceover."""
+        raw_clips = list(dict.fromkeys(raw_clips))
         if not raw_clips:
             raise ValueError("No raw clips provided to render_short")
 
         vcodec, vcodec_flags = _detect_video_encoder()
 
-        # Calculate target clip duration (~2.1 to 3.2 seconds per cut)
         # Add +0.4s video buffer beyond TTS duration so the final spoken sentence is never cut off
         total_dur = tts_result.duration_sec + 0.4
         num_clips = len(raw_clips)
-        per_clip_dur = max(cut_min_sec, min(cut_max_sec, total_dur / num_clips))
+        per_clip_dur = total_dur / num_clips
 
         # Probe clip durations so we can skip intro title cards and seek into live action
         clip_durations = {clip: _probe_video_duration(clip) for clip in raw_clips}
 
-        # If total_dur exceeds num_clips * 3.0s, cycle clips to keep every cut 2-3s
+        # Strict one-pass cut plan: every unique visual appears AT MOST ONCE (zero intra-video repeats)
         cut_plan: list[tuple[Path, float, float]] = []
         elapsed = 0.0
-        idx = 0
-        while elapsed < total_dur:
-            clip = raw_clips[idx % num_clips]
-            pass_num = idx // num_clips
-            dur = min(per_clip_dur, total_dur - elapsed)
-            start_offset = _choose_action_offset(clip_durations.get(clip, 0.0), dur, pass_num)
-            if dur < 1.2 and cut_plan:
-                # Absorb tiny remainder into previous cut
-                prev_clip, prev_off, prev_dur = cut_plan[-1]
-                cut_plan[-1] = (prev_clip, prev_off, prev_dur + dur)
-                break
+        for idx, clip in enumerate(raw_clips):
+            is_last = idx == num_clips - 1
+            dur = round(max(1.2, total_dur - elapsed), 3) if is_last else round(per_clip_dur, 3)
+            start_offset = _choose_action_offset(clip_durations.get(clip, 0.0), dur, pass_num=0)
             cut_plan.append((clip, start_offset, dur))
             elapsed += dur
-            idx += 1
 
         # 1. Normalize & trim each 2-3s cut individually (low RAM usage!)
         trimmed_dir = work_dir / "trimmed"
