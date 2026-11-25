@@ -1,12 +1,12 @@
-"""Diverse, AI-verified real video fetcher: 80-90% Wikimedia Commons & Internet Archive, max 10-20% NASA."""
+"""Diverse, AI-verified real video & photo fetcher: Wikimedia, Wikipedia, Openverse, Archive, NASA."""
 
 import asyncio
 import logging
+import math
 import random
 from pathlib import Path
 from typing import Optional
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.safety_filter import VisualSafetyFilter
 
@@ -33,16 +33,33 @@ BLOCKED_WORDS = (
     "commercial", "advertisement", "cartoon", "wireframe", "fractal",
     "geometric", "abstract", "kaleidoscope", "screensaver", "visualizer",
     "oscilloscope",
-    # Wikimedia noisy textbook/document/building/game filenames
+    # Wikimedia / Wikipedia noisy textbook/document/building/game/diagram filenames
     "map", "page", "scan", "pdf", "poster", "flag", "coat_of_arms",
     "signature", "portrait", "museum", "building", "street", "table",
-    "schema", "illustration", "drawing", "sketch", "game", "gameplay",
+    "schema", "schematic", "illustration", "drawing", "sketch", "game", "gameplay",
+    "collage", "holotype", "specimen", "distribution", "range_map", "radar",
+    "screenshot", "settings", "menu", "icon", "button", "packaging", "board_game",
+    "cruise", "ship_port", "reproductive",
     # Captive/food/vintage noise
     "cage", "zoo", "captive", "seafood", "chopped", "cooked", "recipe",
     "food", "meal", "dish", "vintage", "menu", "restaurant", "market",
 )
 
 ANIMATION_ONLY_BLOCKED = ("animation", "animated", "simulation", "cgi", "render")
+
+FILLER_QUERY_WORDS = frozenset({
+    "dark", "endless", "giant", "tiny", "super", "extreme", "close", "closeup",
+    "macro", "slow", "motion", "style", "view", "camera", "x-ray", "xray",
+    "animated", "animation", "dramatic", "real", "footage", "high", "ultra",
+    "the", "and", "with", "from", "into", "over", "under", "very", "most",
+})
+
+SAFE_NASA_FALLBACK_QUERIES = (
+    "earth from space timelapse",
+    "aurora borealis space",
+    "solar flare sun",
+    "nebula galaxy stars",
+)
 
 
 def _is_safe_text(text: str, allow_animations: bool = False) -> bool:
@@ -54,34 +71,22 @@ def _is_safe_text(text: str, allow_animations: bool = False) -> bool:
     return True
 
 
-DIVERSE_FALLBACK_QUERIES = (
-    "water droplet slow motion",
-    "lightning storm clouds",
-    "ocean waves underwater",
-    "chemistry laboratory liquid",
-    "microscope cells biology",
-    "fire flame slow motion",
-    "forest nature timelapse",
-    "ice crystal melting",
-    "magnet physics experiment",
-    "volcano lava glowing",
-)
-
-SAFE_NASA_FALLBACK_QUERIES = (
-    "earth from space timelapse",
-    "aurora borealis space",
-    "solar flare sun",
-    "nebula galaxy stars",
-)
-
-
 def _relevance_score(text: str, query_terms: list[str]) -> int:
     lower = text.lower()
     return sum(1 for term in query_terms if term in lower)
 
 
+def _simplify_query(query: str, max_terms: int = 3) -> str:
+    """Strip poetic/camera filler adjectives while preserving core concrete subject/habitat nouns."""
+    words = [w.strip(".,!?;:\"'") for w in query.lower().split()]
+    kept = [w for w in words if len(w) > 2 and w not in FILLER_QUERY_WORDS]
+    if not kept:
+        kept = [w for w in words if len(w) > 2][:max_terms]
+    return " ".join(kept[:max_terms]) or query.strip()
+
+
 class MediaFetcher:
-    """Downloads diverse, AI-verified safe real HD video clips (80-90% non-NASA, max 10-20% NASA)."""
+    """Downloads diverse, AI-verified safe real HD clips & sharp topic-matched photos."""
 
     def __init__(
         self,
@@ -93,26 +98,32 @@ class MediaFetcher:
         self.pixabay_api_key = pixabay_api_key
         self.safety_filter = safety_filter
         self._pexels_disabled = not bool(pexels_api_key)
+        self._openverse_failures = 0
 
-    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4))
     async def _search_pexels(
         self, client: httpx.AsyncClient, query: str, orientation: Optional[str] = "portrait"
     ) -> list[dict]:
+        if self._pexels_disabled or not self.pexels_api_key:
+            return []
         params: dict[str, str | int] = {"query": query, "per_page": 10}
         if orientation:
             params["orientation"] = orientation
-        resp = await client.get(
-            "https://api.pexels.com/videos/search",
-            headers={"Authorization": self.pexels_api_key},
-            params=params,
-            timeout=15.0,
-        )
-        if resp.status_code == 401:
-            logger.warning("Pexels API key unauthorized (401); disabling Pexels.")
-            self._pexels_disabled = True
+        try:
+            resp = await client.get(
+                "https://api.pexels.com/videos/search",
+                headers={"Authorization": self.pexels_api_key},
+                params=params,
+                timeout=10.0,
+            )
+            if resp.status_code == 401:
+                logger.info("Pexels API key rejected (401); disabling Pexels for this run.")
+                self._pexels_disabled = True
+                return []
+            resp.raise_for_status()
+            return resp.json().get("videos", [])
+        except Exception as exc:
+            logger.warning("Pexels search failed for '%s': %s", query, exc)
             return []
-        resp.raise_for_status()
-        return resp.json().get("videos", [])
 
     async def _search_pixabay(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
         if not self.pixabay_api_key:
@@ -121,7 +132,7 @@ class MediaFetcher:
             resp = await client.get(
                 "https://pixabay.com/api/videos/",
                 params={"key": self.pixabay_api_key, "q": query, "safesearch": "true", "per_page": 10},
-                timeout=15.0,
+                timeout=12.0,
             )
             resp.raise_for_status()
             results: list[tuple[str, str]] = []
@@ -152,7 +163,7 @@ class MediaFetcher:
                     "viprop": "url|mime|size",
                     "format": "json",
                 },
-                timeout=15.0,
+                timeout=12.0,
             )
             resp.raise_for_status()
             pages = resp.json().get("query", {}).get("pages", {})
@@ -178,7 +189,7 @@ class MediaFetcher:
             return []
 
     async def _search_wikimedia_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search Wikimedia Commons for sharp, topic-relevant real photos (for Ken Burns motion when videos lack a match)."""
+        """Search Wikimedia Commons for sharp, topic-relevant real photos."""
         try:
             resp = await client.get(
                 "https://commons.wikimedia.org/w/api.php",
@@ -194,7 +205,7 @@ class MediaFetcher:
                     "iiurlwidth": "1280",
                     "format": "json",
                 },
-                timeout=15.0,
+                timeout=12.0,
             )
             resp.raise_for_status()
             pages = resp.json().get("query", {}).get("pages", {})
@@ -220,8 +231,57 @@ class MediaFetcher:
             logger.warning("Wikimedia photo search failed for '%s': %s", query, exc)
             return []
 
+    async def _search_wikipedia_images(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
+        """Search English Wikipedia article lead images for highly reliable, topic-accurate photography."""
+        try:
+            resp = await client.get(
+                "https://en.wikipedia.org/w/api.php",
+                headers={"User-Agent": USER_AGENT},
+                params={
+                    "action": "query",
+                    "generator": "search",
+                    "gsrsearch": query,
+                    "gsrlimit": "8",
+                    "prop": "pageimages",
+                    "piprop": "original|thumbnail",
+                    "pithumbsize": "1280",
+                    "format": "json",
+                },
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            pages = resp.json().get("query", {}).get("pages", {})
+            scored: list[tuple[int, str, str]] = []
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
+            for page_id, page in pages.items():
+                title_lower = str(page.get("title", "")).lower()
+                if not _is_safe_text(title_lower, allow_animations=False):
+                    continue
+                thumb = page.get("thumbnail") or page.get("original") or {}
+                url = str(thumb.get("source") or "")
+                low_url = url.lower()
+                if not url or not any(ext in low_url for ext in (".jpg", ".jpeg", ".png")):
+                    continue
+                if not _is_safe_text(low_url, allow_animations=False):
+                    continue
+                w = thumb.get("width") or 0
+                h = thumb.get("height") or 0
+                if w < 640 or h < 420:
+                    continue
+                score = _relevance_score(f"{title_lower} {low_url}", query_terms)
+                if query_terms and score == 0:
+                    continue
+                scored.append((score, f"wpimg_{page_id}", url))
+            scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
+            return [(vid, url) for _, vid, url in scored[:6]]
+        except Exception as exc:
+            logger.warning("Wikipedia image search failed for '%s': %s", query, exc)
+            return []
+
     async def _search_openverse_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search keyless Openverse Creative Commons photo API for diverse science/nature photography."""
+        """Search keyless Openverse CC photo API with fast timeout and per-job circuit breaker."""
+        if self._openverse_failures >= 3:
+            return []
         try:
             resp = await client.get(
                 "https://api.openverse.org/v1/images/",
@@ -232,7 +292,7 @@ class MediaFetcher:
                     "mature": "false",
                     "page_size": "15",
                 },
-                timeout=15.0,
+                timeout=8.0,
             )
             resp.raise_for_status()
             items = resp.json().get("results", [])
@@ -263,7 +323,15 @@ class MediaFetcher:
             scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
             return [(f"ov_{oid}", img_url) for _, oid, img_url in scored[:8]]
         except Exception as exc:
-            logger.warning("Openverse photo search failed for '%s': %s", query, exc)
+            self._openverse_failures += 1
+            if self._openverse_failures >= 3:
+                logger.warning(
+                    "Openverse failed %d times (%s); tripping circuit breaker for this job.",
+                    self._openverse_failures,
+                    exc,
+                )
+            else:
+                logger.warning("Openverse photo search failed for '%s': %s", query, exc)
             return []
 
     async def _search_archive(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
@@ -278,7 +346,7 @@ class MediaFetcher:
                     "rows": "8",
                     "output": "json",
                 },
-                timeout=15.0,
+                timeout=12.0,
             )
             resp.raise_for_status()
             docs = resp.json().get("response", {}).get("docs", [])
@@ -298,7 +366,7 @@ class MediaFetcher:
                 meta_resp = await client.get(
                     f"https://archive.org/metadata/{ident}/files",
                     headers={"User-Agent": USER_AGENT},
-                    timeout=12.0,
+                    timeout=10.0,
                 )
                 if meta_resp.status_code != 200:
                     continue
@@ -319,12 +387,12 @@ class MediaFetcher:
             return []
 
     async def _search_nasa(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search NASA Image & Video Library (capped at 10-20% of clips per video)."""
+        """Search NASA Image & Video Library (used ONLY for Astronomy up to max_nasa)."""
         try:
             resp = await client.get(
                 "https://images-api.nasa.gov/search",
                 params={"q": query, "media_type": "video", "page_size": "10"},
-                timeout=15.0,
+                timeout=12.0,
             )
             resp.raise_for_status()
             items = resp.json().get("collection", {}).get("items", [])
@@ -343,7 +411,7 @@ class MediaFetcher:
             candidates.sort(key=lambda x: x[0], reverse=True)
             results: list[tuple[str, str]] = []
             for _, nasa_id, href in candidates[:4]:
-                assets_resp = await client.get(href, timeout=12.0)
+                assets_resp = await client.get(href, timeout=10.0)
                 if assets_resp.status_code != 200:
                     continue
                 assets = assets_resp.json()
@@ -370,7 +438,7 @@ class MediaFetcher:
 
     async def _download_file(self, client: httpx.AsyncClient, url: str, dest: Path) -> Path:
         async with client.stream(
-            "GET", url, headers={"User-Agent": USER_AGENT}, timeout=60.0, follow_redirects=True
+            "GET", url, headers={"User-Agent": USER_AGENT}, timeout=45.0, follow_redirects=True
         ) as resp:
             resp.raise_for_status()
             with dest.open("wb") as f:
@@ -387,19 +455,37 @@ class MediaFetcher:
         nasa_ratio: float = 0.2,
         allow_animations: bool = True,
         previously_used_ids: Optional[set[str]] = None,
+        video_topic: str = "",
+        topic_fallback_queries: list[str] | tuple[str, ...] = (),
+        target_duration_sec: float = 0.0,
+        cut_max_sec: float = 2.5,
     ) -> tuple[list[Path], list[str]]:
-        """Fetch diverse, topic-relevant clips using batched Gemini Vision checks (saves ~85% API quota)."""
+        """Fetch diverse, topic-anchored unique visuals so every cut fits cut_max_sec with zero repeats."""
         output_dir.mkdir(parents=True, exist_ok=True)
+        self._openverse_failures = 0
+
+        # Ensure enough beat slots so average cut length never exceeds cut_max_sec (e.g. 2.5s)
+        min_required = (
+            max(6, math.ceil(target_duration_sec / max(1.0, cut_max_sec)))
+            if target_duration_sec > 0
+            else min(len(queries), 6)
+        )
+        working_queries = list(queries)
+        extra_pool = [q for q in topic_fallback_queries if q]
+        extra_idx = 0
+        while len(working_queries) < min_required and extra_pool:
+            working_queries.append(extra_pool[extra_idx % len(extra_pool)])
+            extra_idx += 1
+
         used_ids: set[str] = set(previously_used_ids or set())
-        newly_used_ids: list[str] = []
-        max_nasa = 0 if nasa_ratio <= 0 else max(1, round(len(queries) * nasa_ratio))
+        max_nasa = 0 if nasa_ratio <= 0 else max(1, round(len(working_queries) * nasa_ratio))
         nasa_count = 0
 
-        # Batched Vision-verified passes:
-        #   attempt 0: exact query (real videos + photos)
-        #   attempt 1: exact query (crisp Wikimedia real photos only for any rejected beat)
-        #   attempt 2: broadened 2-word query (videos + photos)
-        chosen: list[Optional[tuple[Path, bool, str]]] = [None] * len(queries)
+        # Batched Vision-verified passes anchored to video_topic:
+        #   attempt 0: exact query (videos + photos)
+        #   attempt 1: exact query (Wikimedia + Wikipedia + Openverse sharp photos)
+        #   attempt 2: simplified concrete noun query (videos + photos)
+        chosen: list[Optional[tuple[Path, bool, str, bool]]] = [None] * len(working_queries)
         async with httpx.AsyncClient() as client:
             for attempt in range(3):
                 pending_indices = [i for i, c in enumerate(chosen) if c is None]
@@ -408,13 +494,10 @@ class MediaFetcher:
 
                 batch_downloads: list[tuple[int, Path, str, bool, str]] = []
                 for idx in pending_indices:
-                    raw_q = queries[idx]
+                    raw_q = working_queries[idx]
                     safe_q = raw_q if _is_safe_text(raw_q, allow_animations=allow_animations) else fallback_query
                     photos_only = attempt == 1
-                    if attempt == 2:
-                        search_q = " ".join(safe_q.split()[:2]) if " " in safe_q else fallback_query
-                    else:
-                        search_q = safe_q
+                    search_q = _simplify_query(safe_q) if attempt == 2 else safe_q
                     prefer_nasa = nasa_ratio >= 0.4 and (idx % 2 == 0) and (nasa_count < max_nasa)
                     allow_nasa = nasa_count < max_nasa
                     cands = await self._collect_candidates(
@@ -449,6 +532,7 @@ class MediaFetcher:
                         [(p, q) for _, p, q, _, _ in batch_downloads],
                         output_dir,
                         allow_animations=allow_animations,
+                        video_topic=video_topic,
                     )
                 else:
                     verdicts = [(True, "ok")] * len(batch_downloads)
@@ -457,22 +541,16 @@ class MediaFetcher:
                     if ok:
                         final_path = output_dir / f"raw_{idx:02d}{temp_path.suffix}"
                         temp_path.replace(final_path)
-                        chosen[idx] = (final_path, is_nasa, vid)
+                        chosen[idx] = (final_path, is_nasa, vid, True)
                         if is_nasa:
                             nasa_count += 1
                     else:
                         logger.warning("REJECTED clip %s for '%s': %s", vid, raw_q, reason)
                         temp_path.unlink(missing_ok=True)
 
-            # Emergency safe NASA fallback only up to max_nasa, then per-beat rotated Vision-verified photo fallback
+            # Emergency safe NASA fallback only up to max_nasa (Astronomy only)
             fb_list = list(SAFE_NASA_FALLBACK_QUERIES)
             random.shuffle(fb_list)
-            ch_fb = list(fallback_queries) if fallback_queries else [fallback_query]
-            random.shuffle(ch_fb)
-            diverse_fb = list(DIVERSE_FALLBACK_QUERIES)
-            random.shuffle(diverse_fb)
-            photo_fb_queries = ch_fb + diverse_fb
-
             for idx, item in enumerate(chosen):
                 if item is not None or nasa_count >= max_nasa:
                     continue
@@ -482,69 +560,106 @@ class MediaFetcher:
                             used_ids.add(vid)
                             final_path = output_dir / f"raw_{idx:02d}.mp4"
                             await self._download_file(client, url, final_path)
-                            chosen[idx] = (final_path, True, vid)
+                            chosen[idx] = (final_path, True, vid, False)
                             nasa_count += 1
                             break
                     if chosen[idx] is not None:
                         break
 
-            for fb_attempt in range(2):
+            # Stage A: Same-topic fallback pool ONLY (never off-topic habitats/subjects!)
+            topic_fb_pool: list[str] = []
+            seen_fb: set[str] = set()
+            for candidate_q in [
+                *topic_fallback_queries,
+                _simplify_query(video_topic, max_terms=4) if video_topic else "",
+                *[_simplify_query(q, max_terms=2) for q in working_queries],
+            ]:
+                cq = str(candidate_q).strip()
+                if cq and cq.lower() not in seen_fb and _is_safe_text(cq, allow_animations=False):
+                    seen_fb.add(cq.lower())
+                    topic_fb_pool.append(cq)
+
+            # Stage B: Channel fallback queries as last resort ONLY if still short of min_required
+            channel_fb_pool = [
+                q for q in (list(fallback_queries) if fallback_queries else [fallback_query])
+                if q and q.lower() not in seen_fb
+            ]
+
+            for stage_name, fb_pool in (("topic", topic_fb_pool), ("channel", channel_fb_pool)):
+                if not fb_pool:
+                    continue
+                current_ready = sum(1 for c in chosen if c is not None)
+                if stage_name == "channel" and current_ready >= min_required:
+                    break
                 if not any(c is None for c in chosen):
                     break
-                fb_downloads: list[tuple[int, Path, str, str]] = []
-                for idx, item in enumerate(chosen):
-                    if item is not None:
-                        continue
-                    offset = (idx + fb_attempt * 3) % len(photo_fb_queries)
-                    rotated_queries = photo_fb_queries[offset:] + photo_fb_queries[:offset]
-                    downloaded_fb = False
-                    for fb_q in rotated_queries:
-                        wm_cands = await self._search_wikimedia_photos(client, fb_q)
-                        ov_cands = await self._search_openverse_photos(client, fb_q)
-                        for vid, url in [*wm_cands, *ov_cands]:
-                            if vid not in used_ids:
-                                used_ids.add(vid)
-                                temp_path = output_dir / f"fb_{fb_attempt}_{idx:02d}_{vid}.jpg"
-                                try:
-                                    await self._download_file(client, url, temp_path)
-                                    fb_downloads.append((idx, temp_path, fb_q, vid))
-                                    downloaded_fb = True
-                                    break
-                                except Exception as exc:
-                                    logger.warning("Fallback photo download failed for %s: %s", vid, exc)
-                                    temp_path.unlink(missing_ok=True)
-                        if downloaded_fb:
-                            break
 
-                if fb_downloads:
-                    if self.safety_filter is not None:
-                        fb_verdicts = await asyncio.to_thread(
-                            self.safety_filter.check_batch,
-                            [(p, q) for _, p, q, _ in fb_downloads],
-                            output_dir,
-                            allow_animations=allow_animations,
-                        )
-                    else:
-                        fb_verdicts = [(True, "ok")] * len(fb_downloads)
+                max_fb_attempts = 2 if stage_name == "topic" else 1
+                for fb_attempt in range(max_fb_attempts):
+                    if not any(c is None for c in chosen):
+                        break
+                    fb_downloads: list[tuple[int, Path, str, str]] = []
+                    for idx, item in enumerate(chosen):
+                        if item is not None:
+                            continue
+                        offset = (idx + fb_attempt * 2) % len(fb_pool)
+                        rotated_queries = fb_pool[offset:] + fb_pool[:offset]
+                        downloaded_fb = False
+                        for fb_q in rotated_queries:
+                            wm_cands = await self._search_wikimedia_photos(client, fb_q)
+                            wp_cands = await self._search_wikipedia_images(client, fb_q)
+                            ov_cands = await self._search_openverse_photos(client, fb_q)
+                            for vid, url in [*wm_cands, *wp_cands, *ov_cands]:
+                                if vid not in used_ids:
+                                    used_ids.add(vid)
+                                    temp_path = output_dir / f"fb_{stage_name}_{fb_attempt}_{idx:02d}_{vid}.jpg"
+                                    try:
+                                        await self._download_file(client, url, temp_path)
+                                        fb_downloads.append((idx, temp_path, fb_q, vid))
+                                        downloaded_fb = True
+                                        break
+                                    except Exception as exc:
+                                        logger.warning("Fallback photo download failed for %s: %s", vid, exc)
+                                        temp_path.unlink(missing_ok=True)
+                            if downloaded_fb:
+                                break
 
-                    for (idx, temp_path, fb_q, vid), (ok, reason) in zip(fb_downloads, fb_verdicts):
-                        if ok:
-                            final_path = output_dir / f"raw_{idx:02d}.jpg"
-                            temp_path.replace(final_path)
-                            chosen[idx] = (final_path, False, vid)
+                    if fb_downloads:
+                        if self.safety_filter is not None:
+                            fb_verdicts = await asyncio.to_thread(
+                                self.safety_filter.check_batch,
+                                [(p, q) for _, p, q, _ in fb_downloads],
+                                output_dir,
+                                allow_animations=allow_animations,
+                                video_topic=video_topic,
+                            )
                         else:
-                            logger.warning("REJECTED fallback photo %s for '%s': %s", vid, fb_q, reason)
-                            temp_path.unlink(missing_ok=True)
+                            fb_verdicts = [(True, "ok")] * len(fb_downloads)
+
+                        for (idx, temp_path, fb_q, vid), (ok, reason) in zip(fb_downloads, fb_verdicts):
+                            if ok:
+                                final_path = output_dir / f"raw_{idx:02d}.jpg"
+                                temp_path.replace(final_path)
+                                chosen[idx] = (final_path, False, vid, False)
+                            else:
+                                logger.warning("REJECTED %s fallback photo %s for '%s': %s", stage_name, vid, fb_q, reason)
+                                temp_path.unlink(missing_ok=True)
+
+        # Beat 0 (Cover / Opening Hook) protection: promote first primary topic-matched clip to position 0
+        ordered_items = [item for item in chosen if item is not None]
+        if ordered_items and not ordered_items[0][3]:
+            for pos, item in enumerate(ordered_items):
+                if item[3]:
+                    ordered_items.insert(0, ordered_items.pop(pos))
+                    logger.info("Promoted primary topic-matched clip %s to Beat 0 (cover frame).", item[2])
+                    break
 
         # Strict zero-duplicate enforcement: drop unfilled beats rather than ever reusing a clip
         downloaded: list[Path] = []
         newly_used_ids: list[str] = []
         seen_paths: set[Path] = set()
         seen_vids: set[str] = set()
-        for item in chosen:
-            if item is None:
-                continue
-            path, _is_nasa, vid = item
+        for path, _is_nasa, vid, _is_primary in ordered_items:
             if path in seen_paths or vid in seen_vids:
                 continue
             seen_paths.add(path)
@@ -552,7 +667,7 @@ class MediaFetcher:
             downloaded.append(path)
             newly_used_ids.append(vid)
 
-        min_unique = min(len(queries), 5)
+        min_unique = min(len(working_queries), 5)
         if len(downloaded) < min_unique:
             raise RuntimeError(
                 f"Only {len(downloaded)} unique safe visuals found (minimum {min_unique} required to prevent repetition)"
@@ -583,12 +698,17 @@ class MediaFetcher:
         """Return prioritized list of (vid, url, is_nasa) including real videos + sharp topic photos."""
         if photos_only:
             wm = [(v, u, False) for v, u in await self._search_wikimedia_photos(client, query) if v not in used_ids]
+            wp = [(v, u, False) for v, u in await self._search_wikipedia_images(client, query) if v not in used_ids]
             ov = [(v, u, False) for v, u in await self._search_openverse_photos(client, query) if v not in used_ids]
             interleaved: list[tuple[str, str, bool]] = []
-            for a, b in zip(wm, ov):
-                interleaved.extend([a, b])
-            interleaved.extend(wm[len(ov) :])
-            interleaved.extend(ov[len(wm) :])
+            max_len = max(len(wm), len(wp), len(ov), 0)
+            for k in range(max_len):
+                if k < len(wm):
+                    interleaved.append(wm[k])
+                if k < len(wp):
+                    interleaved.append(wp[k])
+                if k < len(ov):
+                    interleaved.append(ov[k])
             return interleaved
 
         non_nasa: list[tuple[str, str, bool]] = []
@@ -596,6 +716,8 @@ class MediaFetcher:
 
         if not self._pexels_disabled and self.pexels_api_key:
             for orientation in ("portrait", None):
+                if self._pexels_disabled:
+                    break
                 videos = await self._search_pexels(client, query, orientation=orientation)
                 for v in videos:
                     vid = f"pexels_{v.get('id')}"
@@ -619,6 +741,9 @@ class MediaFetcher:
 
         if include_photos:
             for vid, url in await self._search_wikimedia_photos(client, query):
+                if vid not in used_ids:
+                    non_nasa.append((vid, url, False))
+            for vid, url in await self._search_wikipedia_images(client, query):
                 if vid not in used_ids:
                     non_nasa.append((vid, url, False))
             for vid, url in await self._search_openverse_photos(client, query):
