@@ -28,10 +28,10 @@ except ZoneInfoNotFoundError:
 
 
 def _jitter_tts_rate(base_rate: str) -> str:
-    """Slightly vary speech rate (+-2%) around the channel baseline for natural cadence."""
+    """Slightly vary speech rate (+-2%) around the fast channel baseline for natural brisk cadence."""
     m = re.search(r"([+-]?\d+)", base_rate)
-    base_val = int(m.group(1)) if m else 8
-    varied = max(4, min(13, base_val + random.SystemRandom().randint(-2, 2)))
+    base_val = int(m.group(1)) if m else 15
+    varied = max(12, min(18, base_val + random.SystemRandom().randint(-2, 2)))
     return f"{varied:+d}%"
 
 
@@ -125,6 +125,10 @@ class ShortsPipeline:
                     nasa_ratio=channel.nasa_ratio,
                     allow_animations=channel.allow_animations,
                     previously_used_ids=past_clips,
+                    video_topic=f"{script.title} — {script.topic}",
+                    topic_fallback_queries=script.topic_fallback_queries,
+                    target_duration_sec=tts_result.duration_sec + 0.25,
+                    cut_max_sec=channel.cut_max_sec,
                 )
 
                 final_video = job_dir / "final_short.mp4"
