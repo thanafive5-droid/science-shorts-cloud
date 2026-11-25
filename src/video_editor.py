@@ -1,4 +1,4 @@
-"""FFmpeg-based 9:16 fast-paced 2-3 second cut video editor with burned-in captions."""
+"""FFmpeg-based 9:16 fast-paced 1.0-2.5 second cut video editor with burned-in captions."""
 
 import array
 import logging
@@ -130,39 +130,39 @@ def _choose_action_offset(clip_dur: float, cut_dur: float, pass_num: int) -> flo
 
 
 def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
-    """Synthesize a unique, clearly audible copyright-free electronic track (6 key/tempo presets)."""
+    """Synthesize a unique, upbeat copyright-free electronic track (6 key/tempo presets, 128-138 BPM)."""
     import random
 
     sys_rng = random.SystemRandom()
     presets = [
         # (bpm, chords, arpeggios)
         (
-            120.0,
+            128.0,
             [(110.0, 220.0, 261.63, 329.63), (87.31, 174.61, 220.0, 261.63), (130.81, 196.0, 261.63, 329.63), (98.0, 196.0, 246.94, 293.66)],
             [(440.0, 523.25, 659.25, 523.25, 440.0, 659.25, 523.25, 392.0), (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 329.63), (392.0, 523.25, 659.25, 783.99, 659.25, 523.25, 392.0, 523.25), (392.0, 493.88, 587.33, 493.88, 392.0, 587.33, 493.88, 392.0)],
         ),
         (
-            116.0,
+            130.0,
             [(146.83, 293.66, 349.23, 440.0), (116.54, 233.08, 293.66, 349.23), (87.31, 174.61, 220.0, 261.63), (130.81, 261.63, 329.63, 392.0)],
             [(587.33, 698.46, 880.0, 698.46, 587.33, 880.0, 698.46, 523.25), (466.16, 587.33, 698.46, 587.33, 466.16, 698.46, 587.33, 440.0), (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 329.63), (523.25, 659.25, 783.99, 659.25, 523.25, 783.99, 659.25, 493.88)],
         ),
         (
-            124.0,
+            132.0,
             [(82.41, 164.81, 196.0, 246.94), (130.81, 261.63, 329.63, 392.0), (98.0, 196.0, 246.94, 293.66), (146.83, 293.66, 369.99, 440.0)],
             [(329.63, 392.0, 493.88, 392.0, 329.63, 493.88, 392.0, 293.66), (523.25, 659.25, 783.99, 659.25, 523.25, 783.99, 659.25, 493.88), (392.0, 493.88, 587.33, 493.88, 392.0, 587.33, 493.88, 369.99), (587.33, 739.99, 880.0, 739.99, 587.33, 880.0, 739.99, 587.33)],
         ),
         (
-            112.0,
+            134.0,
             [(130.81, 261.63, 311.13, 392.0), (103.83, 207.65, 261.63, 311.13), (155.56, 311.13, 392.0, 466.16), (116.54, 233.08, 293.66, 349.23)],
             [(523.25, 622.25, 783.99, 622.25, 523.25, 783.99, 622.25, 466.16), (415.30, 523.25, 622.25, 523.25, 415.30, 622.25, 523.25, 392.0), (311.13, 392.0, 466.16, 392.0, 311.13, 466.16, 392.0, 293.66), (466.16, 587.33, 698.46, 587.33, 466.16, 698.46, 587.33, 466.16)],
         ),
         (
-            128.0,
+            136.0,
             [(92.50, 185.0, 220.0, 277.18), (146.83, 293.66, 369.99, 440.0), (110.0, 220.0, 277.18, 329.63), (82.41, 164.81, 207.65, 246.94)],
             [(369.99, 440.0, 554.37, 440.0, 369.99, 554.37, 440.0, 329.63), (587.33, 739.99, 880.0, 739.99, 587.33, 880.0, 739.99, 554.37), (440.0, 554.37, 659.25, 554.37, 440.0, 659.25, 554.37, 415.30), (329.63, 415.30, 493.88, 415.30, 329.63, 493.88, 415.30, 329.63)],
         ),
         (
-            118.0,
+            138.0,
             [(98.0, 196.0, 233.08, 293.66), (155.56, 311.13, 392.0, 466.16), (116.54, 233.08, 293.66, 349.23), (87.31, 174.61, 220.0, 261.63)],
             [(392.0, 466.16, 587.33, 466.16, 392.0, 587.33, 466.16, 349.23), (311.13, 392.0, 466.16, 392.0, 311.13, 466.16, 392.0, 293.66), (466.16, 587.33, 698.46, 587.33, 466.16, 698.46, 587.33, 440.0), (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 349.23)],
         ),
@@ -174,8 +174,8 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
     beat_dur = 60.0 / bpm
     step_dur = beat_dur / 2.0
     chord_dur = beat_dur * 8.0
-    fade_in = int(0.35 * sample_rate)
-    fade_out = int(0.9 * sample_rate)
+    fade_in = int(0.30 * sample_rate)
+    fade_out = int(0.80 * sample_rate)
     buf = array.array("h")
     two_pi = 2.0 * math.pi
     rng = random.Random(sys_rng.randrange(1, 1_000_000))
@@ -188,29 +188,29 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
 
         # 1. Warm harmonic synth pad (fundamental + gentle 2nd harmonic for rich speaker presence)
         local_t = t % chord_dur
-        chord_env = min(1.0, local_t / 0.18) * min(1.0, (chord_dur - local_t) / 0.18)
+        chord_env = min(1.0, local_t / 0.16) * min(1.0, (chord_dur - local_t) / 0.16)
         pad = (
             math.sin(two_pi * f1 * t) + 0.25 * math.sin(two_pi * f1 * 2 * t)
             + math.sin(two_pi * f2 * t) + 0.20 * math.sin(two_pi * f2 * 2 * t)
             + math.sin(two_pi * f3 * t)
         ) / 3.45
 
-        # 2. Soft modern electronic kick thump (pitch-swept sine on every beat)
+        # 2. Tight modern electronic kick thump (pitch-swept sine on every beat)
         beat_t = t % beat_dur
-        kick_freq = 52.0 + 95.0 * math.exp(-32.0 * beat_t)
-        kick = math.sin(two_pi * kick_freq * beat_t) * math.exp(-12.0 * beat_t) * 0.55
+        kick_freq = 54.0 + 98.0 * math.exp(-34.0 * beat_t)
+        kick = math.sin(two_pi * kick_freq * beat_t) * math.exp(-13.0 * beat_t) * 0.54
 
-        # 3. Warm rhythmic bassline + crisp plucked melody + subtle off-beat hi-hat
+        # 3. Rhythmic bassline + crisp plucked melody + snappy off-beat hi-hat
         step_t = t % step_dur
         step_idx = int(t / step_dur) % len(arp_freqs)
-        bass = math.sin(two_pi * bass_f * t) * (0.4 + 0.6 * math.exp(-5.0 * beat_t)) * 0.42
+        bass = math.sin(two_pi * bass_f * t) * (0.4 + 0.6 * math.exp(-5.5 * beat_t)) * 0.42
         arp_f = arp_freqs[step_idx]
         arp = (
             math.sin(two_pi * arp_f * t) + 0.3 * math.sin(two_pi * arp_f * 2 * t)
-        ) * math.exp(-9.0 * step_t) * 0.34
-        hihat = (rng.uniform(-1.0, 1.0) * math.exp(-65.0 * step_t) * 0.14) if (step_idx % 2 == 1) else 0.0
+        ) * math.exp(-11.0 * step_t) * 0.34
+        hihat = (rng.uniform(-1.0, 1.0) * math.exp(-75.0 * step_t) * 0.14) if (step_idx % 2 == 1) else 0.0
 
-        bed = (0.42 * pad * chord_env) + kick + bass + arp + hihat
+        bed = (0.40 * pad * chord_env) + kick + bass + arp + hihat
 
         if i < fade_in:
             bed *= i / fade_in
@@ -218,9 +218,9 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
             bed *= max(0.0, (total_samples - i) / fade_out)
 
         hook_sfx = 0.0
-        if t < 0.28:
+        if t < 0.26:
             # Immediate Frame-1 audio hook impact (punchy sub-drop + subtle air transient)
-            hook_env = math.exp(-11.0 * t)
+            hook_env = math.exp(-11.5 * t)
             hook_freq = 48.0 + 135.0 * math.exp(-26.0 * t)
             hook_sfx = (
                 math.sin(two_pi * hook_freq * t) * hook_env * 0.65
@@ -257,8 +257,63 @@ def _detect_video_encoder() -> tuple[str, list[str]]:
     return "libx264", ["-preset", "veryfast", "-crf", "22"]
 
 
+def _build_cut_durations(
+    total_dur: float,
+    num_clips: int,
+    cut_min_sec: float = 1.0,
+    cut_max_sec: float = 2.5,
+) -> list[float]:
+    """Generate varied cut durations summing to total_dur, strictly clamped to [cut_min_sec, cut_max_sec] when feasible."""
+    if num_clips <= 0:
+        raise ValueError("num_clips must be positive")
+    if num_clips == 1:
+        return [round(total_dur, 3)]
+
+    avg = total_dur / num_clips
+    # If total_dur falls outside [min*N, max*N], use even proportional pacing safely above 0.8s
+    if avg < cut_min_sec or avg > cut_max_sec:
+        durs = [round(avg, 3) for _ in range(num_clips - 1)]
+        durs.append(round(max(0.8, total_dur - sum(durs)), 3))
+        return durs
+
+    # Organic fast Shorts cadence: punchy Beat 0 (~0.84x avg), varied rhythm on middle/closing beats
+    rng = random.SystemRandom()
+    weights = [0.84] + [rng.uniform(0.86, 1.16) for _ in range(num_clips - 1)]
+    w_sum = sum(weights)
+    durs = [total_dur * (w / w_sum) for w in weights]
+
+    # Iteratively clamp into [cut_min_sec, cut_max_sec] and redistribute residual to unlocked slots
+    for _ in range(16):
+        durs = [min(cut_max_sec, max(cut_min_sec, d)) for d in durs]
+        residual = total_dur - sum(durs)
+        if abs(residual) < 1e-4:
+            break
+        adjustable = [
+            i for i, d in enumerate(durs)
+            if (residual > 0 and d < cut_max_sec - 1e-4) or (residual < 0 and d > cut_min_sec + 1e-4)
+        ]
+        if not adjustable:
+            break
+        step = residual / len(adjustable)
+        for i in adjustable:
+            durs[i] = min(cut_max_sec, max(cut_min_sec, durs[i] + step))
+
+    # Final exact rounding adjustment on an interior/last slot that preserves bounds
+    rounded = [round(d, 3) for d in durs]
+    diff = round(total_dur - sum(rounded), 3)
+    if diff != 0.0:
+        for i in range(num_clips - 1, -1, -1):
+            candidate = round(rounded[i] + diff, 3)
+            if cut_min_sec <= candidate <= cut_max_sec:
+                rounded[i] = candidate
+                break
+        else:
+            rounded[-1] = round(max(0.8, rounded[-1] + diff), 3)
+    return rounded
+
+
 class VideoEditor:
-    """Assembles 2-3 second real video cuts into a 1080x1920 YouTube Short."""
+    """Assembles fast-paced 1.0-2.5 second real video/photo cuts into a 1080x1920 YouTube Short."""
 
     def render_short(
         self,
@@ -266,9 +321,9 @@ class VideoEditor:
         tts_result: TTSResult,
         work_dir: Path,
         output_path: Path,
-        cut_min_sec: float = 2.2,
-        cut_max_sec: float = 3.2,
-        bgm_volume: float = 0.38,
+        cut_min_sec: float = 1.0,
+        cut_max_sec: float = 2.5,
+        bgm_volume: float = 0.35,
     ) -> Path:
         """Trim each clip once (zero repeats), concat, burn captions, and mux voiceover."""
         raw_clips = list(dict.fromkeys(raw_clips))
@@ -277,25 +332,29 @@ class VideoEditor:
 
         vcodec, vcodec_flags = _detect_video_encoder()
 
-        # Add +0.4s video buffer beyond TTS duration so the final spoken sentence is never cut off
-        total_dur = tts_result.duration_sec + 0.4
-        num_clips = len(raw_clips)
-        per_clip_dur = total_dur / num_clips
+        # Add +0.25s video buffer beyond TTS duration so the ending finishes cleanly with fast loop replay
+        total_dur = tts_result.duration_sec + 0.25
+        max_possible_clips = max(1, int(total_dur // max(0.5, cut_min_sec)))
+        if len(raw_clips) > max_possible_clips:
+            raw_clips = raw_clips[:max_possible_clips]
+
+        cut_durations = _build_cut_durations(
+            total_dur=total_dur,
+            num_clips=len(raw_clips),
+            cut_min_sec=cut_min_sec,
+            cut_max_sec=cut_max_sec,
+        )
 
         # Probe clip durations so we can skip intro title cards and seek into live action
         clip_durations = {clip: _probe_video_duration(clip) for clip in raw_clips}
 
         # Strict one-pass cut plan: every unique visual appears AT MOST ONCE (zero intra-video repeats)
         cut_plan: list[tuple[Path, float, float]] = []
-        elapsed = 0.0
-        for idx, clip in enumerate(raw_clips):
-            is_last = idx == num_clips - 1
-            dur = round(max(1.2, total_dur - elapsed), 3) if is_last else round(per_clip_dur, 3)
+        for clip, dur in zip(raw_clips, cut_durations):
             start_offset = _choose_action_offset(clip_durations.get(clip, 0.0), dur, pass_num=0)
             cut_plan.append((clip, start_offset, dur))
-            elapsed += dur
 
-        # 1. Normalize & trim each 2-3s cut individually (low RAM usage!)
+        # 1. Normalize & trim each fast 1.0-2.5s cut individually (low RAM usage!)
         trimmed_dir = work_dir / "trimmed"
         trimmed_dir.mkdir(parents=True, exist_ok=True)
         concat_list_path = work_dir / "concat.txt"
@@ -319,12 +378,12 @@ class VideoEditor:
             seg_path = trimmed_dir / f"seg_{i:03d}.mp4"
             is_image = clip_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
             if is_image:
-                # Smooth Ken Burns animation (single input frame into zoompan — NEVER use -loop 1!)
+                # Snappy Ken Burns animation (single input frame into zoompan — NEVER use -loop 1!)
                 frames = max(30, int(round(dur * 30)))
                 zoom_expr = (
-                    "min(zoom+0.0012,1.12)"
+                    "min(zoom+0.0022,1.14)"
                     if i % 2 == 0
-                    else "if(eq(on,1),1.12,max(zoom-0.0012,1.0))"
+                    else "if(eq(on,1),1.14,max(zoom-0.0022,1.0))"
                 )
                 vf_img = (
                     "scale=1280:2276:force_original_aspect_ratio=increase,"
@@ -454,10 +513,16 @@ class VideoEditor:
             ]
         )
 
+        avg_cut = total_dur / len(cut_plan)
+        min_cut = min(d for _, _, d in cut_plan)
+        max_cut = max(d for _, _, d in cut_plan)
         logger.info(
-            "Rendered Short (%d cuts, %.2fs) -> %s",
+            "Rendered Short (%d cuts, %.2fs, avg %.2fs/cut, range %.2f-%.2fs) -> %s",
             len(cut_plan),
             total_dur,
+            avg_cut,
+            min_cut,
+            max_cut,
             output_path.name,
         )
         return output_path
