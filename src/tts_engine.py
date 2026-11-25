@@ -75,7 +75,7 @@ FALLBACK_VOICES = (
 class TTSEngine:
     """Synthesizes English voiceovers and extracts word boundaries + exact duration."""
 
-    def __init__(self, voice: str = "en-US-AndrewMultilingualNeural", rate: str = "+8%") -> None:
+    def __init__(self, voice: str = "en-US-AndrewMultilingualNeural", rate: str = "+15%") -> None:
         self.voice = voice
         self.rate = rate
 
@@ -150,8 +150,8 @@ class TTSEngine:
             logger.warning("No WordBoundary events received; using proportional fallback captions")
             words = _estimate_word_timings(text, actual_audio_sec)
 
-        # Add +0.55s tail pad so the final sentence always finishes cleanly before the clip ends
-        total_duration = actual_audio_sec + 0.55
+        # Add +0.30s tail pad so the final sentence finishes cleanly with tight Shorts loop energy
+        total_duration = actual_audio_sec + 0.30
         logger.info(
             "Synthesized TTS: probed=%.2fs, total=%.2fs, %d word timings -> %s",
             probed_sec,
