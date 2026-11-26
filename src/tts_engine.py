@@ -81,8 +81,8 @@ def _estimate_word_timings(text: str, total_audio_sec: float) -> list[WordTiming
 FALLBACK_VOICES = (
     "en-US-AndrewMultilingualNeural",
     "en-US-BrianNeural",
-    "en-US-GuyNeural",
-    "en-US-ChristopherNeural",
+    "en-US-AvaMultilingualNeural",
+    "en-US-EmmaMultilingualNeural",
 )
 
 
