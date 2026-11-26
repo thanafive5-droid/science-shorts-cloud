@@ -129,50 +129,113 @@ def _choose_action_offset(clip_dur: float, cut_dur: float, pass_num: int) -> flo
     return min(base + (pass_num * (cut_dur + 1.0)), max_start)
 
 
-def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
-    """Synthesize a unique, upbeat copyright-free electronic track (6 key/tempo presets, 128-138 BPM)."""
+def _generate_ambient_bgm(
+    duration_sec: float, wav_path: Path, mood: str = "upbeat_tech"
+) -> Path:
+    """Synthesize distinct topic-matched copyright-free BGM across 6 musical genres, keys, and tempos."""
     import random
 
     sys_rng = random.SystemRandom()
-    presets = [
-        # (bpm, chords, arpeggios)
-        (
-            128.0,
-            [(110.0, 220.0, 261.63, 329.63), (87.31, 174.61, 220.0, 261.63), (130.81, 196.0, 261.63, 329.63), (98.0, 196.0, 246.94, 293.66)],
-            [(440.0, 523.25, 659.25, 523.25, 440.0, 659.25, 523.25, 392.0), (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 329.63), (392.0, 523.25, 659.25, 783.99, 659.25, 523.25, 392.0, 523.25), (392.0, 493.88, 587.33, 493.88, 392.0, 587.33, 493.88, 392.0)],
-        ),
-        (
-            130.0,
-            [(146.83, 293.66, 349.23, 440.0), (116.54, 233.08, 293.66, 349.23), (87.31, 174.61, 220.0, 261.63), (130.81, 261.63, 329.63, 392.0)],
-            [(587.33, 698.46, 880.0, 698.46, 587.33, 880.0, 698.46, 523.25), (466.16, 587.33, 698.46, 587.33, 466.16, 698.46, 587.33, 440.0), (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 329.63), (523.25, 659.25, 783.99, 659.25, 523.25, 783.99, 659.25, 493.88)],
-        ),
-        (
-            132.0,
-            [(82.41, 164.81, 196.0, 246.94), (130.81, 261.63, 329.63, 392.0), (98.0, 196.0, 246.94, 293.66), (146.83, 293.66, 369.99, 440.0)],
-            [(329.63, 392.0, 493.88, 392.0, 329.63, 493.88, 392.0, 293.66), (523.25, 659.25, 783.99, 659.25, 523.25, 783.99, 659.25, 493.88), (392.0, 493.88, 587.33, 493.88, 392.0, 587.33, 493.88, 369.99), (587.33, 739.99, 880.0, 739.99, 587.33, 880.0, 739.99, 587.33)],
-        ),
-        (
-            134.0,
-            [(130.81, 261.63, 311.13, 392.0), (103.83, 207.65, 261.63, 311.13), (155.56, 311.13, 392.0, 466.16), (116.54, 233.08, 293.66, 349.23)],
-            [(523.25, 622.25, 783.99, 622.25, 523.25, 783.99, 622.25, 466.16), (415.30, 523.25, 622.25, 523.25, 415.30, 622.25, 523.25, 392.0), (311.13, 392.0, 466.16, 392.0, 311.13, 466.16, 392.0, 293.66), (466.16, 587.33, 698.46, 587.33, 466.16, 698.46, 587.33, 466.16)],
-        ),
-        (
-            136.0,
-            [(92.50, 185.0, 220.0, 277.18), (146.83, 293.66, 369.99, 440.0), (110.0, 220.0, 277.18, 329.63), (82.41, 164.81, 207.65, 246.94)],
-            [(369.99, 440.0, 554.37, 440.0, 369.99, 554.37, 440.0, 329.63), (587.33, 739.99, 880.0, 739.99, 587.33, 880.0, 739.99, 554.37), (440.0, 554.37, 659.25, 554.37, 440.0, 659.25, 554.37, 415.30), (329.63, 415.30, 493.88, 415.30, 329.63, 493.88, 415.30, 329.63)],
-        ),
-        (
-            138.0,
-            [(98.0, 196.0, 233.08, 293.66), (155.56, 311.13, 392.0, 466.16), (116.54, 233.08, 293.66, 349.23), (87.31, 174.61, 220.0, 261.63)],
-            [(392.0, 466.16, 587.33, 466.16, 392.0, 587.33, 466.16, 349.23), (311.13, 392.0, 466.16, 392.0, 311.13, 466.16, 392.0, 293.66), (466.16, 587.33, 698.46, 587.33, 466.16, 698.46, 587.33, 440.0), (349.23, 440.0, 523.25, 440.0, 349.23, 523.25, 440.0, 349.23)],
-        ),
-    ]
-    bpm, chords, arpeggio_notes = sys_rng.choice(presets)
 
-    sample_rate = 44100
+    # Scale frequencies cleanly across random musical keys (-3 to +5 semitones) so every clip is unique
+    semitones = sys_rng.choice([-3, -2, 0, 2, 3, 5])
+    pitch_scale = 2.0 ** (semitones / 12.0)
+
+    # Distinct chord banks & melody motifs per genre so every video fits its topic & feels fresh
+    genre_bank = {
+        "cosmic_ambient": {
+            "bpm_range": (114.0, 122.0),
+            "chords": [
+                [(65.41, 196.0, 246.94, 293.66), (55.00, 164.81, 220.0, 261.63), (73.42, 220.0, 261.63, 329.63), (61.74, 196.0, 246.94, 329.63)],
+                [(55.00, 164.81, 220.0, 261.63), (65.41, 196.0, 246.94, 329.63), (58.27, 174.61, 220.0, 293.66), (49.00, 146.83, 196.0, 246.94)],
+                [(73.42, 220.0, 277.18, 329.63), (55.00, 164.81, 220.0, 277.18), (61.74, 185.00, 246.94, 293.66), (65.41, 196.0, 246.94, 329.63)],
+            ],
+            "melodies": [
+                (523.25, 0.0, 659.25, 587.33, 0.0, 783.99, 659.25, 0.0),
+                (440.00, 523.25, 0.0, 659.25, 523.25, 0.0, 392.00, 0.0),
+                (587.33, 0.0, 739.99, 0.0, 659.25, 587.33, 0.0, 880.0),
+            ],
+        },
+        "cinematic_tension": {
+            "bpm_range": (124.0, 134.0),
+            "chords": [
+                [(73.42, 146.83, 174.61, 220.0), (58.27, 116.54, 146.83, 174.61), (65.41, 130.81, 164.81, 196.0), (69.30, 138.59, 174.61, 220.0)],
+                [(55.00, 110.0, 130.81, 164.81), (58.27, 116.54, 146.83, 174.61), (65.41, 130.81, 155.56, 196.0), (51.91, 110.0, 138.59, 164.81)],
+                [(65.41, 130.81, 155.56, 196.0), (61.74, 123.47, 146.83, 185.0), (51.91, 103.83, 130.81, 155.56), (49.00, 98.00, 123.47, 146.83)],
+            ],
+            "melodies": [
+                (293.66, 293.66, 349.23, 293.66, 440.0, 349.23, 329.63, 293.66),
+                (261.63, 311.13, 293.66, 261.63, 392.0, 311.13, 293.66, 246.94),
+                (220.00, 220.00, 261.63, 293.66, 261.63, 246.94, 220.00, 196.0),
+            ],
+        },
+        "upbeat_tech": {
+            "bpm_range": (126.0, 134.0),
+            "chords": [
+                [(110.0, 220.0, 261.63, 329.63), (87.31, 174.61, 220.0, 261.63), (130.81, 196.0, 261.63, 329.63), (98.0, 196.0, 246.94, 293.66)],
+                [(130.81, 261.63, 329.63, 392.0), (98.0, 196.0, 246.94, 293.66), (110.0, 220.0, 261.63, 329.63), (87.31, 174.61, 220.0, 261.63)],
+                [(146.83, 293.66, 369.99, 440.0), (110.0, 220.0, 277.18, 329.63), (123.47, 246.94, 293.66, 369.99), (98.0, 196.0, 246.94, 293.66)],
+            ],
+            "melodies": [
+                (523.25, 659.25, 783.99, 659.25, 587.33, 659.25, 783.99, 523.25),
+                (440.00, 523.25, 659.25, 523.25, 587.33, 659.25, 880.00, 659.25),
+                (587.33, 739.99, 880.00, 739.99, 659.25, 739.99, 587.33, 440.0),
+            ],
+        },
+        "nature_organic": {
+            "bpm_range": (120.0, 128.0),
+            "chords": [
+                [(130.81, 261.63, 329.63, 392.0), (98.0, 196.0, 246.94, 293.66), (110.0, 220.0, 261.63, 329.63), (87.31, 174.61, 220.0, 261.63)],
+                [(87.31, 174.61, 220.0, 261.63), (130.81, 261.63, 329.63, 392.0), (146.83, 293.66, 349.23, 440.0), (98.0, 196.0, 246.94, 293.66)],
+                [(98.0, 196.0, 246.94, 293.66), (146.83, 293.66, 369.99, 440.0), (164.81, 246.94, 329.63, 392.0), (130.81, 261.63, 329.63, 392.0)],
+            ],
+            "melodies": [
+                (523.25, 587.33, 659.25, 783.99, 659.25, 587.33, 523.25, 659.25),
+                (392.00, 440.00, 523.25, 659.25, 523.25, 440.00, 392.00, 440.0),
+                (587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33, 493.88),
+            ],
+        },
+        "energetic_drive": {
+            "bpm_range": (130.0, 138.0),
+            "chords": [
+                [(82.41, 164.81, 196.0, 246.94), (130.81, 261.63, 329.63, 392.0), (98.0, 196.0, 246.94, 293.66), (146.83, 293.66, 369.99, 440.0)],
+                [(92.50, 185.0, 220.0, 277.18), (146.83, 293.66, 369.99, 440.0), (110.0, 220.0, 277.18, 329.63), (82.41, 164.81, 207.65, 246.94)],
+                [(98.0, 196.0, 233.08, 293.66), (155.56, 311.13, 392.0, 466.16), (116.54, 233.08, 293.66, 349.23), (87.31, 174.61, 220.0, 261.63)],
+            ],
+            "melodies": [
+                (329.63, 493.88, 392.0, 493.88, 329.63, 587.33, 493.88, 392.0),
+                (369.99, 554.37, 440.0, 554.37, 587.33, 739.99, 554.37, 440.0),
+                (392.00, 587.33, 466.16, 587.33, 698.46, 587.33, 466.16, 392.0),
+            ],
+        },
+        "mystery_piano": {
+            "bpm_range": (116.0, 124.0),
+            "chords": [
+                [(130.81, 261.63, 311.13, 392.0), (103.83, 207.65, 261.63, 311.13), (116.54, 233.08, 293.66, 349.23), (98.0, 196.0, 246.94, 311.13)],
+                [(110.0, 220.0, 261.63, 329.63), (87.31, 174.61, 220.0, 261.63), (82.41, 164.81, 207.65, 246.94), (98.0, 196.0, 246.94, 293.66)],
+                [(123.47, 246.94, 293.66, 369.99), (98.0, 196.0, 246.94, 293.66), (92.50, 185.0, 220.0, 277.18), (82.41, 164.81, 220.0, 246.94)],
+            ],
+            "melodies": [
+                (523.25, 622.25, 783.99, 622.25, 698.46, 783.99, 622.25, 466.16),
+                (440.00, 523.25, 659.25, 523.25, 587.33, 659.25, 493.88, 392.0),
+                (493.88, 587.33, 739.99, 587.33, 659.25, 739.99, 554.37, 440.0),
+            ],
+        },
+    }
+
+    active_mood = mood if mood in genre_bank else "upbeat_tech"
+    cfg = genre_bank[active_mood]
+    bpm = round(sys_rng.uniform(*cfg["bpm_range"]))
+    raw_chords = sys_rng.choice(cfg["chords"])
+    raw_melody = sys_rng.choice(cfg["melodies"])
+    chords = [tuple(f * pitch_scale for f in chord) for chord in raw_chords]
+    melody = tuple(f * pitch_scale if f > 0 else 0.0 for f in raw_melody)
+
+    sample_rate = 24000
     total_samples = int(duration_sec * sample_rate)
     beat_dur = 60.0 / bpm
     step_dur = beat_dur / 2.0
+    substep_dur = beat_dur / 4.0
     chord_dur = beat_dur * 8.0
     fade_in = int(0.30 * sample_rate)
     fade_out = int(0.80 * sample_rate)
@@ -180,37 +243,110 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
     two_pi = 2.0 * math.pi
     rng = random.Random(sys_rng.randrange(1, 1_000_000))
 
+    logger.info("Synthesized BGM: mood=%s, bpm=%.0f, key=%+d st (%.1fs)", active_mood, bpm, semitones, duration_sec)
+
     for i in range(total_samples):
         t = i / sample_rate
         chord_idx = int(t // chord_dur) % len(chords)
         bass_f, f1, f2, f3 = chords[chord_idx]
-        arp_freqs = arpeggio_notes[chord_idx]
 
-        # 1. Warm harmonic synth pad (fundamental + gentle 2nd harmonic for rich speaker presence)
         local_t = t % chord_dur
         chord_env = min(1.0, local_t / 0.16) * min(1.0, (chord_dur - local_t) / 0.16)
-        pad = (
-            math.sin(two_pi * f1 * t) + 0.25 * math.sin(two_pi * f1 * 2 * t)
-            + math.sin(two_pi * f2 * t) + 0.20 * math.sin(two_pi * f2 * 2 * t)
-            + math.sin(two_pi * f3 * t)
-        ) / 3.45
 
-        # 2. Tight modern electronic kick thump (balanced so kick never pumps or clouds speech)
+        beat_num = int(t // beat_dur)
         beat_t = t % beat_dur
-        kick_freq = 54.0 + 98.0 * math.exp(-34.0 * beat_t)
-        kick = math.sin(two_pi * kick_freq * beat_t) * math.exp(-13.0 * beat_t) * 0.42
-
-        # 3. Rhythmic bassline + crisp plucked melody + snappy off-beat hi-hat
         step_t = t % step_dur
-        step_idx = int(t / step_dur) % len(arp_freqs)
-        bass = math.sin(two_pi * bass_f * t) * (0.4 + 0.6 * math.exp(-5.5 * beat_t)) * 0.42
-        arp_f = arp_freqs[step_idx]
-        arp = (
-            math.sin(two_pi * arp_f * t) + 0.3 * math.sin(two_pi * arp_f * 2 * t)
-        ) * math.exp(-11.0 * step_t) * 0.34
-        hihat = (rng.uniform(-1.0, 1.0) * math.exp(-75.0 * step_t) * 0.14) if (step_idx % 2 == 1) else 0.0
+        step_idx = int(t // step_dur) % len(melody)
+        sub_t = t % substep_dur
+        mel_f = melody[step_idx]
 
-        bed = (0.36 * pad * chord_env) + kick + bass + arp + hihat
+        if active_mood == "cosmic_ambient":
+            # Lush detuned space pad + glassy FM bells + soft deep sub-pulse (no hard kick)
+            lfo = 0.78 + 0.22 * math.sin(two_pi * 0.45 * t)
+            pad = (
+                math.sin(two_pi * f1 * t) + 0.55 * math.sin(two_pi * (f1 * 1.004) * t)
+                + math.sin(two_pi * f2 * t) + 0.45 * math.sin(two_pi * f3 * t)
+            ) / 3.0
+            bass = math.sin(two_pi * bass_f * t) * 0.34
+            bell = (
+                math.sin(two_pi * mel_f * t + 1.1 * math.sin(two_pi * (mel_f * 2.76) * t))
+                * math.exp(-4.8 * step_t) * 0.22
+            ) if mel_f > 0 else 0.0
+            pulse = math.sin(two_pi * (48.0 + 30.0 * math.exp(-16.0 * beat_t)) * beat_t) * math.exp(-7.0 * beat_t) * 0.22
+            bed = (0.44 * pad * chord_env * lfo) + bass + bell + pulse
+
+        elif active_mood == "cinematic_tension":
+            # Bowed string/cello texture + dramatic double heartbeat thump + clockwork suspense tick
+            cello = (
+                math.sin(two_pi * f1 * t) + 0.45 * math.sin(two_pi * f1 * 2 * t) + 0.22 * math.sin(two_pi * f1 * 3 * t)
+                + 0.75 * math.sin(two_pi * f2 * t) + 0.55 * math.sin(two_pi * f3 * t)
+            ) / 2.97
+            hb1 = math.exp(-14.0 * beat_t)
+            hb2 = math.exp(-18.0 * ((beat_t - 0.16) if beat_t >= 0.16 else 9.0))
+            heartbeat = math.sin(two_pi * 55.0 * beat_t) * (hb1 * 0.36 + hb2 * 0.24)
+            suspense_tick = (
+                (rng.uniform(-1.0, 1.0) * 0.12 + math.sin(two_pi * 1850.0 * sub_t) * 0.08)
+                * math.exp(-85.0 * sub_t)
+            )
+            ostinato = (math.sin(two_pi * mel_f * t) + 0.3 * math.sin(two_pi * mel_f * 2 * t)) * math.exp(-9.0 * step_t) * 0.24
+            bass = math.sin(two_pi * bass_f * t) * 0.32
+            bed = (0.34 * cello * chord_env) + heartbeat + suspense_tick + ostinato + bass
+
+        elif active_mood == "upbeat_tech":
+            # Woody marimba/kalimba plucks + bouncy bass + crisp shaker/rimshot
+            pad = (math.sin(two_pi * f1 * t) + 0.8 * math.sin(two_pi * f2 * t) + 0.6 * math.sin(two_pi * f3 * t)) / 2.4
+            marimba = (
+                math.sin(two_pi * mel_f * t) + 0.35 * math.sin(two_pi * mel_f * 4 * t) * math.exp(-42.0 * step_t)
+            ) * math.exp(-12.5 * step_t) * 0.34
+            kick = math.sin(two_pi * (55.0 + 90.0 * math.exp(-32.0 * beat_t)) * beat_t) * math.exp(-14.0 * beat_t) * 0.38
+            rim = (math.sin(two_pi * 780.0 * beat_t) * math.exp(-60.0 * beat_t) * 0.16) if (beat_num % 2 == 1) else 0.0
+            shaker = (rng.uniform(-1.0, 1.0) * math.exp(-65.0 * step_t) * 0.10) if (step_idx % 2 == 1) else 0.0
+            bass = math.sin(two_pi * bass_f * t) * (0.35 + 0.65 * math.exp(-7.0 * step_t)) * 0.36
+            bed = (0.28 * pad * chord_env) + marimba + kick + rim + shaker + bass
+
+        elif active_mood == "nature_organic":
+            # Warm acoustic harp plucks + airy flute-like melody shimmer + soft hand drum
+            pad = (math.sin(two_pi * f1 * t) + 0.9 * math.sin(two_pi * f2 * t) + 0.8 * math.sin(two_pi * f3 * t)) / 2.7
+            arp_notes = (f1, f2, f3, f2)
+            harp_f = arp_notes[step_idx % 4]
+            harp = (
+                math.sin(two_pi * harp_f * t)
+                + 0.40 * math.sin(two_pi * harp_f * 2 * t) * math.exp(-9.0 * step_t)
+                + 0.18 * math.sin(two_pi * harp_f * 3 * t) * math.exp(-15.0 * step_t)
+            ) * math.exp(-6.5 * step_t) * 0.30
+            flute_vib = 1.0 + 0.004 * math.sin(two_pi * 5.2 * t)
+            flute = math.sin(two_pi * (mel_f * flute_vib) * t) * math.exp(-5.0 * step_t) * 0.16
+            hand_drum = math.sin(two_pi * (82.0 + 45.0 * math.exp(-24.0 * beat_t)) * beat_t) * math.exp(-11.0 * beat_t) * 0.28
+            bass = math.sin(two_pi * bass_f * t) * 0.30
+            bed = (0.30 * pad * chord_env) + harp + flute + hand_drum + bass
+
+        elif active_mood == "energetic_drive":
+            # Driving 16th-note synthwave bass + offbeat chord stabs + crisp kick/snare/hihat
+            offbeat_env = math.exp(-10.0 * ((beat_t - step_dur) if beat_t >= step_dur else 9.0))
+            stab = (
+                math.sin(two_pi * f1 * t) + 0.4 * math.sin(two_pi * f1 * 2 * t)
+                + math.sin(two_pi * f2 * t) + math.sin(two_pi * f3 * t)
+            ) / 3.4 * offbeat_env * 0.30
+            bass16 = (math.sin(two_pi * bass_f * t) + 0.35 * math.sin(two_pi * bass_f * 2 * t)) * math.exp(-13.0 * sub_t) * 0.40
+            lead = (math.sin(two_pi * mel_f * t) + 0.3 * math.sin(two_pi * mel_f * 2 * t)) * math.exp(-11.0 * step_t) * 0.26
+            kick = math.sin(two_pi * (54.0 + 98.0 * math.exp(-34.0 * beat_t)) * beat_t) * math.exp(-13.0 * beat_t) * 0.42
+            clap = (rng.uniform(-1.0, 1.0) * math.exp(-36.0 * beat_t) * 0.18) if (beat_num % 2 == 1) else 0.0
+            hihat = (rng.uniform(-1.0, 1.0) * math.exp(-78.0 * step_t) * 0.12) if (step_idx % 2 == 1) else 0.0
+            bed = stab + bass16 + lead + kick + clap + hihat
+
+        else:  # mystery_piano
+            # Warm electric/felt piano chords + delicate high celesta/music box + gentle pulse
+            chorus_pad = (
+                math.sin(two_pi * f1 * t) + 0.35 * math.sin(two_pi * (f1 * 1.003) * t)
+                + math.sin(two_pi * f2 * t) + math.sin(two_pi * f3 * t)
+            ) / 3.35
+            chord_strike = math.exp(-4.5 * (t % (beat_dur * 2.0)))
+            celesta = (
+                math.sin(two_pi * mel_f * t) + 0.25 * math.sin(two_pi * mel_f * 3 * t) * math.exp(-28.0 * step_t)
+            ) * math.exp(-8.5 * step_t) * 0.24
+            bass = math.sin(two_pi * bass_f * t) * (0.45 + 0.55 * math.exp(-4.0 * beat_t)) * 0.34
+            tick = (rng.uniform(-1.0, 1.0) * math.exp(-90.0 * beat_t) * 0.08)
+            bed = (0.36 * chorus_pad * (0.35 + 0.65 * chord_strike) * chord_env) + celesta + bass + tick
 
         if i < fade_in:
             bed *= i / fade_in
@@ -218,19 +354,18 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
             bed *= max(0.0, (total_samples - i) / fade_out)
 
         hook_sfx = 0.0
-        if t < 0.26:
-            # Immediate Frame-1 audio hook impact (punchy sub-drop + subtle air transient)
-            hook_env = math.exp(-11.5 * t)
-            hook_freq = 48.0 + 135.0 * math.exp(-26.0 * t)
+        if t < 0.24:
+            # Subtle Frame-1 attention swell (cleaner and less boomy so Beat 1 narration is crystal clear)
+            hook_env = math.exp(-12.0 * t)
+            hook_freq = 50.0 + 110.0 * math.exp(-26.0 * t)
             hook_sfx = (
-                math.sin(two_pi * hook_freq * t) * hook_env * 0.65
-                + rng.uniform(-1.0, 1.0) * math.exp(-18.0 * t) * 0.20
+                math.sin(two_pi * hook_freq * t) * hook_env * 0.45
+                + rng.uniform(-1.0, 1.0) * math.exp(-20.0 * t) * 0.12
             )
         val = bed + hook_sfx
 
-        # Soft saturation for fuller perceived loudness on mobile speakers
-        val = math.tanh(val * 1.15)
-        sample = int(max(-1.0, min(1.0, val * 0.92)) * 32767)
+        val = math.tanh(val * 1.05)
+        sample = int(max(-1.0, min(1.0, val * 0.88)) * 32767)
         buf.append(sample)
 
     with wave.open(str(wav_path), "wb") as wf:
@@ -324,6 +459,7 @@ class VideoEditor:
         cut_min_sec: float = 1.0,
         cut_max_sec: float = 2.5,
         bgm_volume: float = 0.28,
+        bgm_mood: str = "upbeat_tech",
     ) -> Path:
         """Trim each clip once (zero repeats), concat, burn captions, and mux voiceover."""
         raw_clips = list(dict.fromkeys(raw_clips))
@@ -479,7 +615,7 @@ class VideoEditor:
         # 3. Burn in dynamic Shorts subtitles + mix voiceover with copyright-free ambient BGM
         ass_path = build_ass_subtitles(tts_result.words, work_dir / "captions.ass")
         ass_escaped = ass_path.as_posix().replace(":", "\\:")
-        bgm_path = _generate_ambient_bgm(total_dur, work_dir / "bgm.wav")
+        bgm_path = _generate_ambient_bgm(total_dur, work_dir / "bgm.wav", mood=bgm_mood)
 
         audio_filter = (
             "[1:a]aresample=48000,aformat=sample_rates=48000:channel_layouts=stereo,"
