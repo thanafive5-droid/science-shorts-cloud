@@ -195,7 +195,7 @@ def build_adaptation_context(channel_id: str, youtube_handle: str) -> tuple[str,
     """Return (adaptation_prompt_block, published_short_titles) from one live channel fetch."""
     lines: list[str] = []
 
-    perf = analyze_channel_performance(youtube_handle, limit=30)
+    perf = analyze_channel_performance(youtube_handle, limit=60)
     published_titles = [s.title for s in perf.shorts if s.title]
     if perf.top_shorts:
         top_str = "; ".join(f'"{s.title}" ({s.views:,} views)' for s in perf.top_shorts)
