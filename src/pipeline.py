@@ -167,6 +167,13 @@ class ShortsPipeline:
                         script.description,
                         script.tags,
                     )
+                    if getattr(script, "comment_prompt", ""):
+                        await asyncio.to_thread(
+                            self.uploader.post_engagement_comment,
+                            creds,
+                            video_id,
+                            script.comment_prompt,
+                        )
                     self.db.mark_topic_used(channel_id, topic)
                     self.db.mark_clips_used(channel_id, used_clip_ids)
                     self.db.record_post(
