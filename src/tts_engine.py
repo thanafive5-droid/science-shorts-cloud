@@ -1,11 +1,25 @@
 """Text-to-speech synthesis with word-level timestamps and exact ffprobe duration."""
 
 import logging
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 import edge_tts
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+
+def _smooth_narration_for_tts(text: str) -> str:
+    """Normalize punctuation and dashes so Edge Neural TTS speaks smoothly without glitchy pauses."""
+    cleaned = text.replace("—", ", ").replace("–", ", ").replace("--", ", ")
+    cleaned = re.sub(r'["()\[\]]+', "", cleaned)
+    cleaned = re.sub(r"\s*,\s*\.", ".", cleaned)
+    cleaned = re.sub(r"\.\s*,", ".", cleaned)
+    cleaned = re.sub(r",\s*,+", ", ", cleaned)
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    cleaned = re.sub(r"\s+([,!?.;:])", r"\1", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +89,7 @@ FALLBACK_VOICES = (
 class TTSEngine:
     """Synthesizes English voiceovers and extracts word boundaries + exact duration."""
 
-    def __init__(self, voice: str = "en-US-AndrewMultilingualNeural", rate: str = "+15%") -> None:
+    def __init__(self, voice: str = "en-US-AndrewMultilingualNeural", rate: str = "+8%") -> None:
         self.voice = voice
         self.rate = rate
 
@@ -105,17 +119,18 @@ class TTSEngine:
     ) -> TTSResult:
         """Generate MP3 voiceover, exact ffprobe duration, and word-level timestamps."""
         effective_rate = rate or self.rate
+        clean_text = _smooth_narration_for_tts(text) or text
         output_audio_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             communicate = edge_tts.Communicate(
-                text=text,
+                text=clean_text,
                 voice=voice_name,
                 rate=effective_rate,
                 boundary="WordBoundary",
             )
         except TypeError:
             # Older edge-tts versions without explicit boundary kwarg
-            communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=effective_rate)
+            communicate = edge_tts.Communicate(text=clean_text, voice=voice_name, rate=effective_rate)
 
         words: list[WordTiming] = []
         audio_chunks = bytearray()
@@ -148,12 +163,14 @@ class TTSEngine:
 
         if not words:
             logger.warning("No WordBoundary events received; using proportional fallback captions")
-            words = _estimate_word_timings(text, actual_audio_sec)
+            words = _estimate_word_timings(clean_text, actual_audio_sec)
 
         # Add +0.30s tail pad so the final sentence finishes cleanly with tight Shorts loop energy
         total_duration = actual_audio_sec + 0.30
         logger.info(
-            "Synthesized TTS: probed=%.2fs, total=%.2fs, %d word timings -> %s",
+            "Synthesized TTS: voice=%s, rate=%s, probed=%.2fs, total=%.2fs, %d word timings -> %s",
+            voice_name,
+            effective_rate,
             probed_sec,
             total_duration,
             len(words),
