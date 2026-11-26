@@ -28,10 +28,10 @@ except ZoneInfoNotFoundError:
 
 
 def _jitter_tts_rate(base_rate: str) -> str:
-    """Slightly vary speech rate (+-2%) around the fast channel baseline for natural brisk cadence."""
+    """Gently vary speech rate (+-1%) strictly within smooth natural bounds (+5% to +10%)."""
     m = re.search(r"([+-]?\d+)", base_rate)
-    base_val = int(m.group(1)) if m else 15
-    varied = max(12, min(18, base_val + random.SystemRandom().randint(-2, 2)))
+    base_val = int(m.group(1)) if m else 8
+    varied = max(5, min(10, base_val + random.SystemRandom().randint(-1, 1)))
     return f"{varied:+d}%"
 
 
