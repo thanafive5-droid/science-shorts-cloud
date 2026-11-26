@@ -169,7 +169,7 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
     ]
     bpm, chords, arpeggio_notes = sys_rng.choice(presets)
 
-    sample_rate = 22050
+    sample_rate = 44100
     total_samples = int(duration_sec * sample_rate)
     beat_dur = 60.0 / bpm
     step_dur = beat_dur / 2.0
@@ -195,10 +195,10 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
             + math.sin(two_pi * f3 * t)
         ) / 3.45
 
-        # 2. Tight modern electronic kick thump (pitch-swept sine on every beat)
+        # 2. Tight modern electronic kick thump (balanced so kick never pumps or clouds speech)
         beat_t = t % beat_dur
         kick_freq = 54.0 + 98.0 * math.exp(-34.0 * beat_t)
-        kick = math.sin(two_pi * kick_freq * beat_t) * math.exp(-13.0 * beat_t) * 0.54
+        kick = math.sin(two_pi * kick_freq * beat_t) * math.exp(-13.0 * beat_t) * 0.42
 
         # 3. Rhythmic bassline + crisp plucked melody + snappy off-beat hi-hat
         step_t = t % step_dur
@@ -210,7 +210,7 @@ def _generate_ambient_bgm(duration_sec: float, wav_path: Path) -> Path:
         ) * math.exp(-11.0 * step_t) * 0.34
         hihat = (rng.uniform(-1.0, 1.0) * math.exp(-75.0 * step_t) * 0.14) if (step_idx % 2 == 1) else 0.0
 
-        bed = (0.40 * pad * chord_env) + kick + bass + arp + hihat
+        bed = (0.36 * pad * chord_env) + kick + bass + arp + hihat
 
         if i < fade_in:
             bed *= i / fade_in
@@ -323,7 +323,7 @@ class VideoEditor:
         output_path: Path,
         cut_min_sec: float = 1.0,
         cut_max_sec: float = 2.5,
-        bgm_volume: float = 0.35,
+        bgm_volume: float = 0.28,
     ) -> Path:
         """Trim each clip once (zero repeats), concat, burn captions, and mux voiceover."""
         raw_clips = list(dict.fromkeys(raw_clips))
@@ -481,6 +481,17 @@ class VideoEditor:
         ass_escaped = ass_path.as_posix().replace(":", "\\:")
         bgm_path = _generate_ambient_bgm(total_dur, work_dir / "bgm.wav")
 
+        audio_filter = (
+            "[1:a]aresample=48000,aformat=sample_rates=48000:channel_layouts=stereo,"
+            "highpass=f=75,lowpass=f=11500,"
+            "acompressor=threshold=0.1585:ratio=2.2:attack=12:release=140:makeup=1.4,"
+            "volume=1.08,asplit=2[vo_mix][vo_sc];"
+            f"[2:a]aresample=48000,aformat=sample_rates=48000:channel_layouts=stereo,volume={bgm_volume:.2f}[bgm_raw];"
+            "[bgm_raw][vo_sc]sidechaincompress=threshold=0.04:ratio=3.5:attack=25:release=260[bgm_ducked];"
+            "[vo_mix][bgm_ducked]amix=inputs=2:duration=first:normalize=0:dropout_transition=2,"
+            "alimiter=limit=0.92:attack=5:release=60[aout]"
+        )
+
         _run_ffmpeg(
             [
                 "-i",
@@ -492,7 +503,7 @@ class VideoEditor:
                 "-vf",
                 f"ass='{ass_escaped}'",
                 "-filter_complex",
-                f"[1:a]volume=1.05[vo];[2:a]volume={bgm_volume:.2f}[bgm];[vo][bgm]amix=inputs=2:duration=first:normalize=0:dropout_transition=2,alimiter=limit=0.95[aout]",
+                audio_filter,
                 "-map",
                 "0:v:0",
                 "-map",
