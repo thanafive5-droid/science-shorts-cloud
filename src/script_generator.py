@@ -24,6 +24,25 @@ class VisualBeat:
     search_query: str
 
 
+VALID_BGM_MOODS: tuple[str, ...] = (
+    "cosmic_ambient",
+    "cinematic_tension",
+    "upbeat_tech",
+    "nature_organic",
+    "energetic_drive",
+    "mystery_piano",
+)
+
+CHANNEL_DEFAULT_MOODS: dict[str, str] = {
+    "astronomy": "cosmic_ambient",
+    "biology": "nature_organic",
+    "chemistry": "energetic_drive",
+    "earth_science": "cinematic_tension",
+    "physics": "upbeat_tech",
+    "general_science": "mystery_piano",
+}
+
+
 @dataclass
 class ShortScript:
     """Complete structured script for a 9:16 Science Short."""
@@ -34,6 +53,7 @@ class ShortScript:
     tags: list[str]
     beats: list[VisualBeat]
     topic_fallback_queries: list[str] = field(default_factory=list)
+    bgm_mood: str = "upbeat_tech"
 
     @property
     def full_narration(self) -> str:
@@ -159,10 +179,17 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THESE):
      - NEVER use abstract words, title screens, slides, charts, diagrams, or people in `search_query`.
    - **CRITICAL `topic_fallback_queries`**: Provide **5 to 6 broader real-camera backup queries STRICTLY within the SAME subject and habitat** (e.g., for deep-sea fish: `["deep sea fish", "anglerfish deep sea", "underwater ocean coral", "bioluminescent jellyfish", "submarine ocean trench", "marine fish underwater"]`). NEVER suggest off-habitat queries (never forest, birds, desert, volcano, etc. for an ocean video!).
 5. **Scientific Accuracy**: 100% real peer-reviewed facts, numbers, and units. Zero myths or hallucinations.
-6. **Metadata**:
+6. **Metadata & Topic-Matched Background Music (`bgm_mood`)**:
    - `title`: Crisp natural Title Case YouTube Shorts title under 62 chars — **NO `#shorts` or hashtags in title**. NEVER end with "Explained", NEVER start with "The Physics of..." or "It...".
    - `description`: 1–2 concise natural sentences + hashtags: {desc_tags}
    - `tags`: 6-10 relevant SEO keywords
+   - `bgm_mood`: Choose the SINGLE best musical genre for THIS specific video's topic & emotion from:
+     - `"cosmic_ambient"`: space, stars, black holes, deep-sea abyss, serene cosmic awe
+     - `"cinematic_tension"`: dangerous phenomena, volcanoes, predators, explosions, survival stakes
+     - `"upbeat_tech"`: physics paradoxes, clever materials, optical/fluid illusions, engineering
+     - `"nature_organic"`: wildlife, plants, coral reefs, ecosystems, natural earth beauty
+     - `"energetic_drive"`: explosive chemistry, lightning, extreme speed or energy records
+     - `"mystery_piano"`: bizarre puzzles, ancient secrets, myth-busting, weird counterintuitive facts
 
 Return ONLY valid JSON matching this exact schema:
 {{
@@ -170,6 +197,7 @@ Return ONLY valid JSON matching this exact schema:
   "title": "Catchy Human Title Without Hashtags",
   "description": "Short description with hashtags",
   "tags": ["science", "nature"],
+  "bgm_mood": "cinematic_tension",
   "topic_fallback_queries": ["broad same-habitat query 1", "broad same-habitat query 2", "..."],
   "beats": [
     {{"narration": "Wait, this deep-sea fish", "search_query": "deep sea snailfish"}},
@@ -236,6 +264,9 @@ Return ONLY valid JSON matching this exact schema:
                 if b.search_query and b.search_query not in topic_fbs:
                     topic_fbs.append(b.search_query)
 
+            raw_mood = str(raw.get("bgm_mood") or "").strip().lower()
+            bgm_mood = raw_mood if raw_mood in VALID_BGM_MOODS else CHANNEL_DEFAULT_MOODS.get(channel.id, "upbeat_tech")
+
             script = ShortScript(
                 topic=str(raw["topic"]).strip(),
                 title=clean_title,
@@ -243,6 +274,7 @@ Return ONLY valid JSON matching this exact schema:
                 tags=[str(t).strip() for t in raw.get("tags", [])][:12],
                 beats=beats,
                 topic_fallback_queries=topic_fbs[:12],
+                bgm_mood=bgm_mood,
             )
             last_script = script
             word_count = len(script.full_narration.split())
@@ -264,11 +296,12 @@ Return ONLY valid JSON matching this exact schema:
 
         assert last_script is not None
         logger.info(
-            "Generated script for [%s]: '%s' (%d beats, %d words)",
+            "Generated script for [%s]: '%s' (%d beats, %d words, mood=%s)",
             channel.id,
             last_script.title,
             len(last_script.beats),
             len(last_script.full_narration.split()),
+            last_script.bgm_mood,
         )
         return last_script
 
