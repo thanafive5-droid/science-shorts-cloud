@@ -1,5 +1,6 @@
-"""Gemini-powered viral science Shorts script and visual beat generator."""
+"""Gemini-powered viral science Shorts micro-story script and visual beat generator."""
 
+import difflib
 import json
 import logging
 import random
@@ -42,6 +43,88 @@ CHANNEL_DEFAULT_MOODS: dict[str, str] = {
     "general_science": "mystery_piano",
 }
 
+GENERIC_TITLE_STOPWORDS: frozenset[str] = frozenset({
+    "the", "this", "that", "why", "how", "what", "when", "where", "into", "from",
+    "with", "your", "can", "actually", "really", "just", "instantly", "turns",
+    "makes", "does", "not", "never", "always", "most", "ever", "found", "real",
+    "hidden", "hiding", "earth", "earths", "science", "liquid", "solid", "metal",
+    "star", "planet", "fish", "animal", "bird", "ocean", "deep", "sea", "water",
+    "world", "inside", "through", "without", "impossible", "secret", "dangerous",
+    "massive", "giant", "tiny", "strange", "weird", "crazy", "alive", "survives",
+})
+
+PHENOMENON_FINGERPRINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("mpemba_effect", ("mpemba", "freezes faster", "hot water freeze", "freeze faster")),
+    ("immortal_jellyfish", ("turritopsis", "immortal jellyfish", "resets its own life", "never grows old", "reverses age")),
+    ("prince_rupert_drop", ("prince rupert", "glass teardrop", "unbreakable glass")),
+    ("gallium_metal", ("gallium", "melts in your palm", "eats through solid aluminum")),
+    ("superfluid_helium", ("superfluid", "climbs out of its container", "vanished into thin air")),
+    ("mantis_pistol_shrimp", ("mantis shrimp", "pistol shrimp", "harder than a bullet", "louder than a jet")),
+    ("bombardier_beetle", ("bombardier", "boiling chemical spray", "fires boiling liquid")),
+    ("leidenfrost_effect", ("leidenfrost", "glide across fire", "slides on metal", "molten lead", "ice glide")),
+    ("ferrofluid", ("ferrofluid", "grows its own spikes", "turns into spikes")),
+    ("wood_frog", ("wood frog", "freezes solid", "freezes completely solid")),
+    ("singing_sand_dunes", ("singing sand", "sand dunes", "musical desert")),
+    ("hydrophobic_sand", ("hydrophobic sand", "refuses to get wet", "hates this leaf")),
+)
+
+
+def _normalize_text(text: str) -> str:
+    return " ".join(re.sub(r"[^a-z0-9\s]", " ", text.lower()).split())
+
+
+def _distinctive_tokens(text: str) -> set[str]:
+    return {
+        tok
+        for tok in _normalize_text(text).split()
+        if len(tok) >= 4 and tok not in GENERIC_TITLE_STOPWORDS
+    }
+
+
+def _matching_fingerprints(text: str) -> set[str]:
+    norm = _normalize_text(text)
+    matched: set[str] = set()
+    for name, cues in PHENOMENON_FINGERPRINTS:
+        if any(cue in norm for cue in cues):
+            matched.add(name)
+    return matched
+
+
+def _find_duplicate_match(
+    candidate_topic: str, candidate_title: str, existing_items: list[str]
+) -> str | None:
+    """Return colliding existing title/topic if candidate duplicates or closely rehashes an earlier Short."""
+    norm_title = _normalize_text(candidate_title)
+    norm_topic = _normalize_text(candidate_topic)
+    cand_combo = f"{candidate_title} {candidate_topic}"
+    cand_tokens = _distinctive_tokens(cand_combo)
+    cand_fps = _matching_fingerprints(cand_combo)
+
+    for old_item in existing_items:
+        norm_old = _normalize_text(old_item)
+        if not norm_old:
+            continue
+        if norm_old == norm_title or norm_old == norm_topic:
+            return old_item
+        if (
+            difflib.SequenceMatcher(None, norm_title, norm_old).ratio() >= 0.72
+            or difflib.SequenceMatcher(None, norm_topic, norm_old).ratio() >= 0.72
+        ):
+            return old_item
+
+        old_fps = _matching_fingerprints(old_item)
+        if cand_fps and old_fps and (cand_fps & old_fps):
+            return old_item
+
+        old_tokens = _distinctive_tokens(old_item)
+        if cand_tokens and old_tokens:
+            overlap = len(cand_tokens & old_tokens)
+            union = len(cand_tokens | old_tokens)
+            jaccard = overlap / union if union else 0.0
+            if overlap >= 3 or (overlap >= 2 and jaccard >= 0.40):
+                return old_item
+    return None
+
 
 @dataclass
 class ShortScript:
@@ -54,6 +137,7 @@ class ShortScript:
     beats: list[VisualBeat]
     topic_fallback_queries: list[str] = field(default_factory=list)
     bgm_mood: str = "upbeat_tech"
+    comment_prompt: str = ""
 
     @property
     def full_narration(self) -> str:
@@ -62,24 +146,24 @@ class ShortScript:
 
 NARRATIVE_ARCS: tuple[tuple[str, str], ...] = (
     (
-        "Myth-Bust",
-        "Shatter a widespread misconception in Beat 1, escalate with real scientific proof in the middle beats, and deliver the surprising real mechanism at the end.",
+        "Micro-Story: Setup -> Escalation -> Payoff",
+        "Tell a vivid 20-second micro-story centered on ONE real physical object, creature, or geological wonder: open inside the action, escalate the danger or paradox around Beat 6, and reveal the true mechanism at the climax.",
     ),
     (
-        "Extreme Human-Scale Comparison",
-        "Anchor the phenomenon to a vivid, jaw-dropping everyday human-scale comparison right away (e.g., louder than a jet engine, hotter than the Sun's surface, heavier than a skyscraper).",
+        "Micro-Story: Myth-Bust Investigation",
+        "Open by shattering a popular myth about a real visible object/creature in Beat 1, prove what really happens in Beats 2–8, and close with the unforgettable scientific truth.",
     ),
     (
-        "Mystery-to-Reveal (Open Loop)",
-        "Open an intriguing visual mystery in Beat 1 without giving away the cause yet, raise the stakes around Beat 6, and withhold the shocking payoff until the final 2 beats.",
+        "Micro-Story: Extreme Survival Challenge",
+        "Drop the viewer straight into an extreme real-world environment in Beat 1 (crush depth, acid lake, lava, cosmic void) and follow one real protagonist or material second by second to a surprising ending.",
     ),
     (
-        "High-Stakes 'What If / Survival'",
-        "Drop the viewer straight inside the extreme condition in Beat 1 (e.g., 'If you dropped this in water...', 'If you stood here for one second...') and trace the real physics/biology second by second.",
+        "Micro-Story: Hidden Anomaly Discovery",
+        "Open with a bizarre real discovery scientists struggled to explain, escalate the mystery mid-story around Beat 6, and deliver the jaw-dropping cause in the final 2 beats.",
     ),
     (
-        "Seamless Curiosity Loop",
-        "Deliver a complete, satisfying scientific reveal, and craft the final 4–5 words so their cadence naturally tempts viewers to rewatch or comment while standing cleanly on their own.",
+        "Micro-Story: Human-Scale Showdown",
+        "Anchor one astonishing physical object or creature to an instant everyday human comparison (louder than a jet, hotter than lava, stronger than Kevlar) and trace its micro-story to an open-loop closer.",
     ),
 )
 
@@ -105,7 +189,7 @@ class ScriptGenerator:
             if clean and norm not in seen_norm:
                 seen_norm.add(norm)
                 merged_avoid.append(clean)
-            if len(merged_avoid) >= 90:
+            if len(merged_avoid) >= 150:
                 break
         avoid_block = "\n".join(f"- {t}" for t in merged_avoid) if merged_avoid else "None yet."
 
@@ -179,10 +263,11 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THESE):
      - NEVER use abstract words, title screens, slides, charts, diagrams, or people in `search_query`.
    - **CRITICAL `topic_fallback_queries`**: Provide **5 to 6 broader real-camera backup queries STRICTLY within the SAME subject and habitat** (e.g., for deep-sea fish: `["deep sea fish", "anglerfish deep sea", "underwater ocean coral", "bioluminescent jellyfish", "submarine ocean trench", "marine fish underwater"]`). NEVER suggest off-habitat queries (never forest, birds, desert, volcano, etc. for an ocean video!).
 5. **Scientific Accuracy**: 100% real peer-reviewed facts, numbers, and units. Zero myths or hallucinations.
-6. **Metadata & Topic-Matched Background Music (`bgm_mood`)**:
-   - `title`: Crisp natural Title Case YouTube Shorts title under 62 chars — **NO `#shorts` or hashtags in title**. NEVER end with "Explained", NEVER start with "The Physics of..." or "It...".
+6. **Metadata, Micro-Story Closer & Engagement Comment (`comment_prompt`)**:
+   - `title`: Crisp natural Title Case YouTube Shorts title under 62 chars — **NO `#shorts` or hashtags in title**. NEVER end with "Explained", NEVER start with "The Physics of..." or "It...". MUST be 100% distinct from every title in the avoid list above!
    - `description`: 1–2 concise natural sentences + hashtags: {desc_tags}
    - `tags`: 6-10 relevant SEO keywords
+   - `comment_prompt`: One friendly, curious starter comment (under 110 chars, zero spam/links/subscribe begging) asking viewers a fun question or what extreme phenomenon they want covered next (e.g., `"Would you dare swim near this hydrothermal vent? Drop the next ocean mystery below!"`).
    - `bgm_mood`: Choose the SINGLE best musical genre for THIS specific video's topic & emotion from:
      - `"cosmic_ambient"`: space, stars, black holes, deep-sea abyss, serene cosmic awe
      - `"cinematic_tension"`: dangerous phenomena, volcanoes, predators, explosions, survival stakes
@@ -198,6 +283,7 @@ Return ONLY valid JSON matching this exact schema:
   "description": "Short description with hashtags",
   "tags": ["science", "nature"],
   "bgm_mood": "cinematic_tension",
+  "comment_prompt": "Short friendly curiosity question for viewers",
   "topic_fallback_queries": ["broad same-habitat query 1", "broad same-habitat query 2", "..."],
   "beats": [
     {{"narration": "Wait, this deep-sea fish", "search_query": "deep sea snailfish"}},
@@ -218,7 +304,7 @@ Return ONLY valid JSON matching this exact schema:
 
         last_script: ShortScript | None = None
         prompt = base_prompt
-        for attempt in range(2):
+        for attempt in range(3):
             response = None
             last_err: Exception | None = None
             for model_name in candidate_models:
@@ -275,24 +361,43 @@ Return ONLY valid JSON matching this exact schema:
                 beats=beats,
                 topic_fallback_queries=topic_fbs[:12],
                 bgm_mood=bgm_mood,
+                comment_prompt=str(raw.get("comment_prompt") or "").strip()[:200],
             )
             last_script = script
             word_count = len(script.full_narration.split())
 
-            if 38 <= word_count <= 68 and len(script.beats) >= 10:
-                break
-
-            if attempt == 0:
+            dup_match = _find_duplicate_match(script.topic, script.title, merged_avoid)
+            if dup_match:
                 logger.warning(
-                    "Script pacing out of bounds (%d beats, %d words); regenerating once for strict 1.0-2.5s pacing...",
-                    len(script.beats),
-                    word_count,
+                    "REJECTED DUPLICATE script '%s' (%s) — too close to '%s'; regenerating (attempt %d/3)...",
+                    script.title,
+                    script.topic,
+                    dup_match,
+                    attempt + 1,
                 )
-                prompt = (
-                    base_prompt
-                    + f"\nCORRECTION REQUIRED: Your previous draft had {len(script.beats)} beats and {word_count} words. "
-                    "You MUST output 11 to 13 beats and STRICTLY 48 to 62 words TOTAL (~4-5 words per beat).\n"
-                )
+                if attempt < 2:
+                    prompt = (
+                        base_prompt
+                        + f"\nREJECTED DUPLICATE: Your draft '{script.title}' (topic: '{script.topic}') is too similar to "
+                        f"previously published Short '{dup_match}'. Pick a 100% DIFFERENT scientific phenomenon and completely fresh title!\n"
+                    )
+                    continue
+
+            if not (38 <= word_count <= 68 and len(script.beats) >= 10):
+                if attempt < 2:
+                    logger.warning(
+                        "Script pacing out of bounds (%d beats, %d words); regenerating for strict 1.0-2.5s pacing...",
+                        len(script.beats),
+                        word_count,
+                    )
+                    prompt = (
+                        base_prompt
+                        + f"\nCORRECTION REQUIRED: Your previous draft had {len(script.beats)} beats and {word_count} words. "
+                        "You MUST output 11 to 13 beats and STRICTLY 48 to 62 words TOTAL (~4-5 words per beat).\n"
+                    )
+                    continue
+
+            break
 
         assert last_script is not None
         logger.info(
