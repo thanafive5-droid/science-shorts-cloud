@@ -1,89 +1,88 @@
 {
   "physics": {
     "focus_topics": [
-      "tactile visible physics demonstrations (magnets in copper, acoustic levitation, Leidenfrost, ferrofluid-like physical shockers)",
-      "impossible material strength, fluid dynamics, wave & optical illusions",
-      "high-stakes cosmic limits (speed of light, extreme gravity, sound waves)"
+      "Impossible Physics Micro-Stories: tangible physical experiments and paradoxes viewers can SEE immediately (non-Newtonian armor, acoustic waves crushing glass, magnetic eddy brakes, vortex cannon shockwaves, acoustic levitation)",
+      "Extreme material limits & optical/fluid wonders with vivid real-camera demonstrations",
+      "Shocking cosmic speed, gravity, and thermodynamics comparisons anchored to visible objects"
     ],
     "avoid_angles": [
       "abstract invisible quantum jargon without dramatic physical visuals",
       "neuroscience or psychology topics unrelated to physical demonstrations",
       "lecture titles starting with 'The Physics of...'",
-      "repeating quantum levitation, superconductors, Prince Rupert's Drop, or Mpemba effect"
+      "repeating quantum levitation, superconductors, Prince Rupert's Drop, Mpemba hot-water freezing, gallium melting, liquid nitrogen sliding, or superfluid helium"
     ],
-    "hook_style": "Use tactile contrast titles like 'The [Concrete Object] That [Impossible Action]!' or 'How [Force] [Shocking Verb] [Object]!'",
-    "extra_directive": "Prioritize visible physical effects viewers can immediately see bend, levitate, shatter, spike, or glow in the first 2 seconds."
+    "hook_style": "Tell a 20-second Micro-Story about ONE visible object under extreme force: 'The [Concrete Object] That [Impossible Action]' or 'What Happens When [Force] Hits [Object]'",
+    "extra_directive": "Frame each Short as a fast-paced Micro-Story (Setup -> Escalation -> Mechanism -> Payoff) using strictly visible real-world physics—NEVER choose invisible forces or repeat classics."
   },
   "chemistry": {
     "focus_topics": [
-      "extreme visible thermal or phase-change contrasts (burning-hot ice, rainbow crystal metals, liquid metals)",
-      "hydrophobic sand and instant liquid-to-solid polymer reactions",
-      "dramatic fiery, luminous, hydrophobic, or self-healing material transformations",
-      "shocking hidden chemistry inside everyday solids and liquids"
+      "Extreme Materials Micro-Stories: visible dramatic reactions, pyrophoric ignition, self-healing polymers, thermite, nitinol shape-memory, glowing luminol, hydrophobic surfaces",
+      "Bizarre element rivalries and extreme phase changes viewers can watch happen on camera",
+      "Hidden reactive chemistry inside everyday crystals, metals, and minerals"
     ],
     "avoid_angles": [
-      "repeating alkali metals / sodium or potassium exploding in water",
-      "invisible gases or invisible timers that look empty on camera",
-      "mild 'changes color' phrasing without extreme stakes",
+      "repeating alkali metals (sodium/potassium) exploding in water",
+      "repeating gallium melting or eating aluminum, Prince Rupert's drop, instant plastic, or ferrofluid spikes",
+      "invisible gases or invisible clock reactions that look static/empty on camera",
       "overused 'world's strongest acid' clichés"
     ],
-    "hook_style": "Use extreme visual contrast titles: 'The [Liquid/Metal/Material] That [Impossible Visual Action]!'",
-    "extra_directive": "NEVER choose invisible phenomena. Every topic must produce a striking, colorful, fiery, crystalline, or physically bizarre visual transformation."
+    "hook_style": "Spotlight one bizarre element or material in a Micro-Story arc: 'This [Material] [Shocking Visible Transformation]' or 'Why Chemists Fear [Specific Substance]'",
+    "extra_directive": "Build an addictive Extreme Elements Micro-Story series: never repeat past metals/liquids, and avoid invisible phenomena."
   },
   "biology": {
     "focus_topics": [
-      "deep-ocean predators, iron-armored sea snails, bullet-force shrimp, blinding predators, and marine bioluminescence",
-      "extreme insect weapons and survival superpowers (boiling sprays, supersonic snaps, regeneration)",
-      "carnivorous, resurrection, and extreme-environment plants"
+      "Wild Survival Micro-Stories: extreme deep-ocean predators, bizarre insect defense mechanisms, bioluminescent hunters, regeneration, fungal mind-control, and parasitic strategies",
+      "Shocking real-world animal engineering & botanical traps with unmistakable wildlife photography",
+      "Human-scale survival comparisons (e.g., louder than a jet engine, venom faster than a blink)"
     ],
     "avoid_angles": [
-      "human body organs, digestion, brain, throat, or medical anatomy (4x-6x lower views and moderation risk)",
-      "confusing metaphors or hyperbolic clickbait titles ('flies to the moon')",
-      "repeating immortal jellyfish / animals that never grow old"
+      "human body organs, digestion, brain, throat, or medical anatomy (lower views and moderation risk)",
+      "repeating immortal jellyfish, mantis/pistol shrimp, bombardier beetle, wood frog freezing, iron-armored sea snail, parrotfish sand, or honeyguide bird",
+      "hyperbolic clickbait metaphors ('flies to the moon')"
     ],
-    "hook_style": "Spotlight one concrete organism's real superpower: 'The Ocean's [Archetype]' or 'The [Creature/Plant] That [Shocking Real Action]!'",
-    "extra_directive": "Focus 100% on wild animals, marine life, insects, microbes, and extreme plants with concrete shocking comparisons (e.g., louder than a jet, hits harder than a bullet)."
+    "hook_style": "Open a wildlife survival Micro-Story: 'The Creature That [Bizarre Real Survival Tactic]' or 'How This Tiny [Animal/Plant] Defeats [Extreme Danger]'",
+    "extra_directive": "Pick ONE vivid organism with abundant real nature photos/footage and tell its survival Micro-Story from danger to twist to payoff."
   },
   "general_science": {
     "focus_topics": [
-      "rule-breaking physical wonders and visible fluid/chemistry/nature puzzles (defying gravity, liquid droplet mazes, breaking light speed in water, sonoluminescence)",
-      "jaw-dropping prehistoric and planetary science shocks (natural nuclear reactors, ancient atmospheric events)",
-      "counterintuitive survival or danger physics myth-busts (liquid nitrogen Leidenfrost, extreme materials)"
+      "Rule-Breakers Micro-Stories: bizarre proven anomalies (Cherenkov blue radiation in water, sonoluminescence star-in-a-jar, triboluminescence glowing tape, Oklo natural nuclear reactor)",
+      "Ancient planetary puzzles and counterintuitive engineering mysteries with vivid visual proof",
+      "Dramatic visible energy & light phenomena"
     ],
     "avoid_angles": [
-      "invisible atmospheric or air-pressure concepts that look empty on camera",
+      "invisible air pressure or unseen gas concepts that look boring/empty on camera",
       "dry textbook titles ending in 'Explained' or starting with 'Why Water...'",
-      "mundane everyday gadget trivia or vague 'also a gas' phrasing",
-      "repeating supercooled water, gallium melting in hand, or Mpemba effect"
+      "repeating supercooled water, gallium, Leidenfrost/ice on fire, ferrofluid, Prince Rupert's drop, or Mpemba effect"
     ],
-    "hook_style": "Use rule-breaking curiosity titles: 'The [Thing] That [Breaks Famous Law]!', 'Earth's [Shocking Hidden Fact]', or 'Can [Ordinary Thing] Create [Extreme Thing]?'",
-    "extra_directive": "Frame every topic as a jaw-dropping real anomaly or broken rule of nature—never like a school textbook explanation."
+    "hook_style": "Use Rule-Breakers Micro-Story titles: 'Earth Built [Impossible Thing] Naturally' or 'Can [Ordinary Object] Break [Famous Rule]?'",
+    "extra_directive": "Turn every topic into a 20-second investigative Micro-Story about nature breaking its own rules—never like a school definition."
   },
   "earth_science": {
     "focus_topics": [
-      "hidden deep-Earth structures (sleeping supervolcanoes, underground oceans, ancient mantle anomalies)",
-      "extreme volcanic, tectonic, glacial, and deep-trench phenomena (melting-iceberg earthquakes, blue-fire lava, underwater waterfalls, mega-caverns)",
-      "epic prehistoric Earth events and bizarre geological time capsules"
+      "Hidden Planet Micro-Stories: blue lava craters, boiling rivers, magnetic reversals, deep brine lakes under the ocean, mega-lightning sprites above storms, underground crystal caves",
+      "Epic geological disasters, submarine volcanoes, permafrost secrets, and fossilized lightning (fulgurites)",
+      "Alien-looking landscapes right here on Earth"
     ],
     "avoid_angles": [
-      "dull textbook geography definitions or generic weather reports",
-      "flat lowercase declarative titles without a curiosity hook"
+      "dull textbook geography definitions or routine weather forecasts",
+      "repeating singing desert dunes, earth inner core stopping, underground crystal towers, or magma ocean diamonds",
+      "flat lowercase declarative titles"
     ],
-    "hook_style": "Use epic Title Case curiosity titles: 'Earth's Hidden [Extreme Feature]!', 'The Place on Earth Where [Impossible Geological Event]!', or 'Earth Built Its Own [Shocking Thing]'",
-    "extra_directive": "Lead Beat 1 with dramatic real geological cinematography (lava, deep canyons, glaciers, lightning supercells, crystals) and make Earth feel alien and awe-inspiring."
+    "hook_style": "Use Hidden Planet Micro-Story titles: 'The River on Earth That Literally Boils' or 'Where Earth Turns Lightning Into Solid Glass'",
+    "extra_directive": "Tell a dramatic expedition-style Micro-Story set inside ONE unmistakable geological wonder with striking real landscape visuals."
   },
   "astronomy": {
     "focus_topics": [
-      "active violent cosmic events (planet-devouring stars, hypervelocity rogue stars, magnetars, tidal disruption events)",
-      "bizarre exoplanets (molten iron/glass rain, pitch-black planets, rogue worlds)",
-      "mind-bending deep-space mysteries (Boötes Void, neutron star mountains, gravitational lensing, JWST anomalies)"
+      "Cosmic Extremes Micro-Stories: tidal disruption stars shredded by black holes, rogue worlds wandering starless space, pulsars, hypervelocity stars, kilonovae",
+      "Alien weather and extreme exoplanets (molten iron rain, pitch-black atmospheres, glass hurricanes)",
+      "Recent James Webb telescope cosmic mysteries and giant void structures"
     ],
     "avoid_angles": [
-      "vague tidally locked 'staring back' eyeball-world titles",
-      "overdone basic trivia like Neptune diamond rain or 'more stars than grains of sand'",
-      "flat declarative titles starting with 'It...'"
+      "vague 'staring back' eyeball-planet clichés",
+      "repeating Neptune diamond rain, white dwarf crystal diamond, or magnetar basic trivia",
+      "flat titles starting with 'It...'"
     ],
-    "hook_style": "Use high-stakes cosmic titles: 'The Alien World That [Extreme Phenomenon]', 'The Dead Star That [Lethal Action]', or 'The Star That [Violent Cosmic Verb]'",
-    "extra_directive": "Maximize cosmic scale and danger/wonder in the first 2 seconds; pair vivid deep-space NASA/observatory visuals with surprising astrophysical numbers."
+    "hook_style": "Use Cosmic Extremes Micro-Story titles: 'The Planet Where It Rains Solid Iron' or 'The Dead Star That Spins 700 Times Per Second'",
+    "extra_directive": "Deliver awe-inspiring cosmic scale through a vivid Micro-Story following ONE star, moon, black hole, or exoplanet."
   }
 }
