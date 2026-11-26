@@ -108,11 +108,11 @@ class ScriptGenerator:
 
         if use_wait_hook:
             hook_rule = (
-                '2. **Scroll-Stopping Hook (Beat 1)**: MUST begin literally with **"Wait,"** or **"Wait—"** '
+                '2. **Scroll-Stopping Hook (Beat 1)**: MUST begin literally with **"Wait,"** '
                 'followed immediately by a shocking curiosity gap '
-                '(e.g., "Wait—this fish survives crushing abyssal pressure.", '
+                '(e.g., "Wait, this fish survives crushing abyssal pressure.", '
                 '"Wait, this metal explodes in water.") '
-                "to freeze the viewer's thumb in the first 1.5 seconds."
+                "to freeze the viewer's thumb in the first 1.5 seconds. NEVER use em-dashes (—)."
             )
         else:
             hook_rule = (
@@ -120,7 +120,7 @@ class ScriptGenerator:
                 'or urgent mystery in 4 to 7 words '
                 '(e.g., "This frog freezes solid and lives.", '
                 '"This snail wears real iron armor."). '
-                'NEVER sound like a textbook, and NEVER start with "Wait", "Did you know", or "Hello guys".'
+                'NEVER sound like a textbook, NEVER use em-dashes (—), and NEVER start with "Wait", "Did you know", or "Hello guys".'
             )
 
         arc_name, arc_guidance = random.SystemRandom().choice(NARRATIVE_ARCS)
@@ -131,9 +131,9 @@ class ScriptGenerator:
 
         system_instruction = (
             "You are an elite YouTube Shorts producer specializing in ultra-tight, high-retention "
-            "English-language science videos (~17 to 21 seconds long, 48 to 62 words TOTAL). "
+            "English-language science videos (~18 to 22 seconds long, 48 to 62 words TOTAL). "
             "Your scripts use rapid 1.0–2.5 second visual hard cuts (11 to 13 beats), "
-            "crisp everyday spoken pacing for short attention spans, "
+            "smooth continuous spoken sentences across beats so text-to-speech sounds completely natural, "
             "and concrete real-world search queries that always return relevant photography."
         )
 
@@ -146,11 +146,12 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THESE):
 {avoid_block}
 
 {adaptation_block}STRICT REQUIREMENTS:
-1. **Ultra-Tight Length (~17–21 seconds total)**: STRICTLY **48 to 62 words TOTAL** across all beats (~4–5 words per beat). NEVER exceed 66 words and NEVER write fewer than 44 words. Zero fluff, zero filler, zero "like and subscribe" begging.
+1. **Ultra-Tight Length (~18–22 seconds total)**: STRICTLY **48 to 62 words TOTAL** across all beats (~4–5 words per beat). NEVER exceed 66 words and NEVER write fewer than 44 words. Zero fluff, zero filler, zero "like and subscribe" begging.
 {hook_rule}
-3. **Mid-Video Retention Reset & Engagement Closer**: Around Beat 6 (~second 9), inject a tiny sharp pivot ("But here is the catch...", "Until pressure hits...", "Then it flips...") to reset viewer attention. End Beat 11–13 with a crisp 4-to-5-word payoff or question. NEVER say "Don't forget to like and subscribe", "follow for more", or "thanks for watching".
-4. **Rapid-Cut 1.0–2.5s Visuals (STRICTLY 11 to 13 beats)**: Split the narration into **11 to 13 punchy beats** (each beat ~4–5 spoken words so visuals cut every 1.0 to 2.5 seconds!).
-   - **ANTI-TEMPLATE / NATURAL HUMAN VOICE**: Write like a sharp human science creator talking fast to a friend (Veritasium / NileRed tone): short punchy phrases, zero melodrama. STRICTLY BAN AI clichés: "mind-bending", "mind-blowing", "astonishing", "incredible", "jaw-dropping", "defies all logic", "defies reality", "believe it or not", "buckle up", "delve", "tapestry", "testament", "unravel", "imagine a world", "here's the crazy part", "secretly".
+3. **Mid-Video Retention Reset & Engagement Closer**: Around Beat 6 (~second 9), inject a tiny sharp pivot ("But here is the catch,", "Until pressure hits,", "Then it flips,") to reset viewer attention. End Beat 11–13 with a crisp 4-to-5-word payoff or question. NEVER say "Don't forget to like and subscribe", "follow for more", or "thanks for watching".
+4. **Rapid-Cut 1.0–2.5s Visuals (STRICTLY 11 to 13 beats) WITH SMOOTH CONTINUOUS SPEECH**: Split the narration across **11 to 13 visual beats** (~4–5 words per beat so visuals cut every 1.0 to 2.5 seconds!):
+   - **SMOOTH CONTINUOUS SPEECH RULE (CRITICAL FOR VOICE QUALITY)**: Write the full narration as **4 to 6 smooth, naturally connected conversational sentences** flowing seamlessly across the 11–13 beats. Do **NOT** put a period (`.`) at the end of every 4-word beat! Let each natural sentence span 2 to 3 consecutive visual beats (with normal commas only where a human pauses), and **NEVER use em-dashes (`—`) or robotic ellipses (`...`)**.
+   - **ANTI-TEMPLATE / NATURAL HUMAN VOICE**: Write like a sharp human science creator talking smoothly to a friend (Veritasium / NileRed tone): clear everyday spoken English, zero melodrama. STRICTLY BAN AI clichés: "mind-bending", "mind-blowing", "astonishing", "incredible", "jaw-dropping", "defies all logic", "defies reality", "believe it or not", "buckle up", "delve", "tapestry", "testament", "unravel", "imagine a world", "here's the crazy part", "secretly".
    - **STRICT SAFETY**: 100% G-rated, family-friendly, YouTube-safe (NO nudity, NO graphic medical/surgery/blood, NO violence, NO people/crowds/sports).
    - **CONCRETE SEARCHABLE QUERIES (2–4 words max per beat)**: Write simple, concrete real-world visual queries that Wikimedia Commons / Wikipedia actually index as real photography/video—and ALWAYS include the subject/habitat anchor so every clip matches the SAME world!
      - GOOD (deep-sea fish example): `"deep sea snailfish"`, `"mariana trench ocean"`, `"anglerfish deep sea"`, `"underwater abyssal fish"`, `"jellyfish deep ocean"`, `"submarine deep sea"`, `"hydrothermal vent ocean"`, `"bioluminescent marine life"`, `"coral reef fish"`, `"deep water ocean"`, `"seafloor sediment ocean"`
@@ -171,7 +172,8 @@ Return ONLY valid JSON matching this exact schema:
   "tags": ["science", "nature"],
   "topic_fallback_queries": ["broad same-habitat query 1", "broad same-habitat query 2", "..."],
   "beats": [
-    {{"narration": "4-5 word hook phrase.", "search_query": "2-4 word concrete photo query"}},
+    {{"narration": "Wait, this deep-sea fish", "search_query": "deep sea snailfish"}},
+    {{"narration": "survives crushing ocean pressure.", "search_query": "mariana trench ocean"}},
     ...
   ]
 }}
@@ -224,7 +226,7 @@ Return ONLY valid JSON matching this exact schema:
                 raise ValueError(f"Generated script had too few beats ({len(beats)})")
 
             if use_wait_hook and not beats[0].narration.lower().startswith("wait"):
-                beats[0].narration = f"Wait— {beats[0].narration}"
+                beats[0].narration = f"Wait, {beats[0].narration}"
 
             clean_title = re.sub(r"\s*#shorts?\b", "", str(raw["title"]), flags=re.IGNORECASE).strip()[:95]
             raw_fb = raw.get("topic_fallback_queries") or []
