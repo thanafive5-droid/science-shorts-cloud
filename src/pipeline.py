@@ -141,6 +141,7 @@ class ShortsPipeline:
                     channel.cut_min_sec,
                     channel.cut_max_sec,
                     channel.bgm_volume,
+                    script.bgm_mood,
                 )
 
                 creds = self.settings.get_youtube_credentials(channel_id)
