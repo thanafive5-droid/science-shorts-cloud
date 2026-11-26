@@ -83,7 +83,7 @@ class VisualSafetyFilter:
         if self.client is None:
             return [(True, "no_api_key")] * len(items)
 
-        chunk_size = 8
+        chunk_size = 12
         all_results: list[tuple[bool, str]] = []
         for start in range(0, len(items), chunk_size):
             chunk = items[start : start + chunk_size]
