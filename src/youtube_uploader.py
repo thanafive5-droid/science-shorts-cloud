@@ -73,3 +73,39 @@ class YouTubeUploader:
         video_id = response["id"]
         logger.info("Published YouTube Short: https://youtube.com/shorts/%s", video_id)
         return video_id
+
+    def post_engagement_comment(
+        self,
+        creds_cfg: YouTubeCredentials,
+        video_id: str,
+        comment_text: str,
+    ) -> bool:
+        """Post a non-fatal starter discussion/vote comment to boost retention & subscriber conversion."""
+        clean_comment = str(comment_text or "").strip()[:220]
+        if not video_id or not clean_comment:
+            return False
+        try:
+            # Omit explicit scopes here so refresh uses whatever scopes the stored token holds cleanly
+            creds = Credentials(
+                token=None,
+                refresh_token=creds_cfg.refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=creds_cfg.client_id,
+                client_secret=creds_cfg.client_secret,
+            )
+            creds.refresh(Request())
+            youtube = build("youtube", "v3", credentials=creds, cache_discovery=False)
+            youtube.commentThreads().insert(
+                part="snippet",
+                body={
+                    "snippet": {
+                        "videoId": video_id,
+                        "topLevelComment": {"snippet": {"textOriginal": clean_comment}},
+                    }
+                },
+            ).execute()
+            logger.info("Posted engagement starter comment on %s", video_id)
+            return True
+        except Exception as exc:
+            logger.warning("Non-fatal: could not post engagement comment on %s: %s", video_id, exc)
+            return False
