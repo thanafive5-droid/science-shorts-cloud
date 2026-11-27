@@ -102,7 +102,7 @@ jobs:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           TTS_VOICE: en-US-AndrewMultilingualNeural
-          TTS_RATE: "+8%"
+          TTS_RATE: "+5%"
           PHYSICS_YT_CLIENT_ID: ${{ secrets.PHYSICS_YT_CLIENT_ID }}
           PHYSICS_YT_CLIENT_SECRET: ${{ secrets.PHYSICS_YT_CLIENT_SECRET }}
           PHYSICS_YT_REFRESH_TOKEN: ${{ secrets.PHYSICS_YT_REFRESH_TOKEN }}
