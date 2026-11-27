@@ -28,10 +28,10 @@ except ZoneInfoNotFoundError:
 
 
 def _jitter_tts_rate(base_rate: str) -> str:
-    """Gently vary speech rate (+-1%) strictly within smooth natural bounds (+5% to +10%)."""
+    """Gently vary speech rate (+-1%) strictly within Zack-D calm storytelling bounds (+3% to +7%)."""
     m = re.search(r"([+-]?\d+)", base_rate)
-    base_val = int(m.group(1)) if m else 8
-    varied = max(5, min(10, base_val + random.SystemRandom().randint(-1, 1)))
+    base_val = int(m.group(1)) if m else 5
+    varied = max(3, min(7, base_val + random.SystemRandom().randint(-1, 1)))
     return f"{varied:+d}%"
 
 
@@ -103,7 +103,12 @@ class ShortsPipeline:
         async with self._render_lock:
             logger.info("=== Starting job [%s] for channel [%s] ===", job_id, channel.display_name)
             try:
-                recent_topics = self.db.get_recent_topics(channel_id, limit=80)
+                recent_topics = list(
+                    dict.fromkeys([
+                        *self.db.get_recent_topics(channel_id, limit=80),
+                        *self.db.get_recent_topics_all(limit=100),
+                    ])
+                )
                 script = await asyncio.to_thread(self.script_gen.generate, channel, recent_topics)
                 topic = script.topic
                 title = script.title
