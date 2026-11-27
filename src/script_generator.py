@@ -26,21 +26,21 @@ class VisualBeat:
 
 
 VALID_BGM_MOODS: tuple[str, ...] = (
-    "cosmic_ambient",
-    "cinematic_tension",
-    "upbeat_tech",
-    "nature_organic",
-    "energetic_drive",
-    "mystery_piano",
+    "curious_pizzicato",
+    "suspense_underscore",
+    "sleek_documentary",
+    "minimal_ambient",
+    "quirky_plucked",
+    "mystery_keys",
 )
 
 CHANNEL_DEFAULT_MOODS: dict[str, str] = {
-    "astronomy": "cosmic_ambient",
-    "biology": "nature_organic",
-    "chemistry": "energetic_drive",
-    "earth_science": "cinematic_tension",
-    "physics": "upbeat_tech",
-    "general_science": "mystery_piano",
+    "astronomy": "minimal_ambient",
+    "biology": "quirky_plucked",
+    "chemistry": "curious_pizzicato",
+    "earth_science": "suspense_underscore",
+    "physics": "sleek_documentary",
+    "general_science": "mystery_keys",
 }
 
 GENERIC_TITLE_STOPWORDS: frozenset[str] = frozenset({
@@ -59,13 +59,24 @@ PHENOMENON_FINGERPRINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("prince_rupert_drop", ("prince rupert", "glass teardrop", "unbreakable glass")),
     ("gallium_metal", ("gallium", "melts in your palm", "eats through solid aluminum")),
     ("superfluid_helium", ("superfluid", "climbs out of its container", "vanished into thin air")),
-    ("mantis_pistol_shrimp", ("mantis shrimp", "pistol shrimp", "harder than a bullet", "louder than a jet")),
+    ("mantis_pistol_shrimp", ("mantis shrimp", "pistol shrimp", "snapping shrimp", "harder than a bullet", "louder than a jet", "boiling bubbles", "cavitation bubble")),
     ("bombardier_beetle", ("bombardier", "boiling chemical spray", "fires boiling liquid")),
     ("leidenfrost_effect", ("leidenfrost", "glide across fire", "slides on metal", "molten lead", "ice glide")),
     ("ferrofluid", ("ferrofluid", "grows its own spikes", "turns into spikes")),
     ("wood_frog", ("wood frog", "freezes solid", "freezes completely solid")),
     ("singing_sand_dunes", ("singing sand", "sand dunes", "musical desert")),
     ("hydrophobic_sand", ("hydrophobic sand", "refuses to get wet", "hates this leaf")),
+    ("mariana_snailfish", ("snailfish", "mariana trench", "impossible depths", "deep sea fish")),
+    ("brinicle_icicle", ("brinicle", "death icicle", "icicle of antarctica")),
+    ("cordyceps_fungus", ("cordyceps", "fungus controls insect", "zombie ant fungus")),
+    ("boiling_river", ("boiling river", "river that literally boils", "shanay timpishka")),
+    ("slinky_drop", ("slinky", "bottom of this slinky")),
+    ("barrelfish_transparent", ("barreleye", "transparent head")),
+    ("thermite_iron", ("thermite", "melts through iron", "rust powder aluminum")),
+    ("molten_glass_planet", ("molten glass", "rains glass", "hd 189733b")),
+    ("radioactive_mushrooms", ("chernobyl mushroom", "mushrooms feed on", "radiotrophic")),
+    ("sea_slug_jellyfish", ("blue dragon", "glaucus", "sea slug eats deadly jellyfish")),
+    ("soda_can_polymer", ("soda cans are not solid metal", "soda can plastic liner")),
 )
 
 
@@ -234,11 +245,9 @@ class ScriptGenerator:
         desc_tags = " ".join([*chosen_tags, "#shorts"])
 
         system_instruction = (
-            "You are an elite YouTube Shorts producer specializing in ultra-tight, high-retention "
-            "English-language science videos (~18 to 22 seconds long, 48 to 62 words TOTAL). "
-            "Your scripts use rapid 1.0–2.5 second visual hard cuts (11 to 13 beats), "
-            "smooth continuous spoken sentences across beats so text-to-speech sounds completely natural, "
-            "and concrete real-world search queries that always return relevant photography."
+            "You are an elite viral Science Shorts producer (inspired by Zack D. Films' crisp, addictive chronological storytelling). "
+            "You write calm, deadpan-curious, crystal-clear English micro-stories (~22 to 27 seconds long, 56 to 72 words TOTAL) "
+            "split across 12 to 14 rapid visual beats (~1.4 to 2.3 seconds per cut), paired with ultra-specific scientific search queries."
         )
 
         base_prompt = f"""
@@ -250,31 +259,31 @@ TOPICS & PUBLISHED TITLES ALREADY USED (DO NOT REPEAT OR RE-ANGLE THESE):
 {avoid_block}
 
 {adaptation_block}STRICT REQUIREMENTS:
-1. **Ultra-Tight Length (~18–22 seconds total)**: STRICTLY **48 to 62 words TOTAL** across all beats (~4–5 words per beat). NEVER exceed 66 words and NEVER write fewer than 44 words. Zero fluff, zero filler, zero "like and subscribe" begging.
+1. **Calm Zack-D Pacing (~22–27 seconds total)**: STRICTLY **56 to 72 words TOTAL** across all beats (~4–6 words per beat). NEVER exceed 76 words and NEVER write fewer than 48 words. Zero fluff, zero hype screaming, zero "like and subscribe" begging.
 {hook_rule}
-3. **Mid-Video Retention Reset & Engagement Closer**: Around Beat 6 (~second 9), inject a tiny sharp pivot ("But here is the catch,", "Until pressure hits,", "Then it flips,") to reset viewer attention. End Beat 11–13 with a crisp 4-to-5-word payoff or question. NEVER say "Don't forget to like and subscribe", "follow for more", or "thanks for watching".
-4. **Rapid-Cut 1.0–2.5s Visuals (STRICTLY 11 to 13 beats) WITH SMOOTH CONTINUOUS SPEECH**: Split the narration across **11 to 13 visual beats** (~4–5 words per beat so visuals cut every 1.0 to 2.5 seconds!):
-   - **SMOOTH CONTINUOUS SPEECH RULE (CRITICAL FOR VOICE QUALITY)**: Write the full narration as **4 to 6 smooth, naturally connected conversational sentences** flowing seamlessly across the 11–13 beats. Do **NOT** put a period (`.`) at the end of every 4-word beat! Let each natural sentence span 2 to 3 consecutive visual beats (with normal commas only where a human pauses), and **NEVER use em-dashes (`—`) or robotic ellipses (`...`)**.
-   - **ANTI-TEMPLATE / NATURAL HUMAN VOICE**: Write like a sharp human science creator talking smoothly to a friend (Veritasium / NileRed tone): clear everyday spoken English, zero melodrama. STRICTLY BAN AI clichés: "mind-bending", "mind-blowing", "astonishing", "incredible", "jaw-dropping", "defies all logic", "defies reality", "believe it or not", "buckle up", "delve", "tapestry", "testament", "unravel", "imagine a world", "here's the crazy part", "secretly".
-   - **STRICT SAFETY**: 100% G-rated, family-friendly, YouTube-safe (NO nudity, NO graphic medical/surgery/blood, NO violence, NO people/crowds/sports).
-   - **CONCRETE SEARCHABLE QUERIES (2–4 words max per beat)**: Write simple, concrete real-world visual queries that Wikimedia Commons / Wikipedia actually index as real photography/video—and ALWAYS include the subject/habitat anchor so every clip matches the SAME world!
-     - GOOD (deep-sea fish example): `"deep sea snailfish"`, `"mariana trench ocean"`, `"anglerfish deep sea"`, `"underwater abyssal fish"`, `"jellyfish deep ocean"`, `"submarine deep sea"`, `"hydrothermal vent ocean"`, `"bioluminescent marine life"`, `"coral reef fish"`, `"deep water ocean"`, `"seafloor sediment ocean"`
-     - BAD: `"dark endless deep ocean abyss"` (too poetic), `"deep sea creature skeleton x-ray style"` (returns odd unrelated hits), or `"parrot fish"` without habitat (write `"parrotfish coral reef"`).
-     - NEVER use abstract words, title screens, slides, charts, diagrams, or people in `search_query`.
-   - **CRITICAL `topic_fallback_queries`**: Provide **5 to 6 broader real-camera backup queries STRICTLY within the SAME subject and habitat** (e.g., for deep-sea fish: `["deep sea fish", "anglerfish deep sea", "underwater ocean coral", "bioluminescent jellyfish", "submarine ocean trench", "marine fish underwater"]`). NEVER suggest off-habitat queries (never forest, birds, desert, volcano, etc. for an ocean video!).
+3. **Chronological Cause-and-Effect Micro-Story**:
+   - Tell one complete chronological micro-story (**Setup → Escalation → Surprising Real Mechanism → Clean Payoff**) where every sentence advances the physical action (`"When a killer ant slips inside..."`, `"Within seconds..."`, `"Instead of dying..."`).
+   - Around Beat 7 (~second 11), deliver a clear turning-point twist (`"But once it..."`, `"Instead, pressure forces..."`, `"That triggers..."`). End Beats 12–14 with an unforgettable scientific payoff—NOT "don't forget to subscribe" or vague filler.
+4. **12 to 14 Rapid Visual Beats WITH SMOOTH CONTINUOUS SPEECH**:
+   - **SMOOTH CONTINUOUS SPEECH RULE**: Write the entire script as **4 to 6 calm, smooth, naturally connected sentences** flowing across the **12 to 14 beats**. Do **NOT** put a period (`.`) at the end of every beat! Let each natural sentence flow across 2–3 visual cuts, and NEVER use em-dashes (`—`) or ellipses (`...`).
+   - **DEADPAN-CURIOUS HUMAN TONE**: Sound like an intriguing, calm narrator explaining a crazy real mechanism plainly—zero forced excitement. STRICTLY BAN AI clichés: "mind-bending", "mind-blowing", "astonishing", "incredible", "jaw-dropping", "defies all logic", "defies reality", "believe it or not", "buckle up", "delve", "tapestry", "testament", "unravel", "imagine a world", "here's the crazy part", "secretly".
+   - **SCIENTIFIC PHOTO SEARCH QUERIES (2–4 precise terms per beat)**: Every beat's `search_query` MUST use concrete **scientific species names, mineral/chemical names, apparatus, or unmistakable physical phenomena** so image APIs return sharp, unambiguous scientific photography—NEVER poetic fluff, vague metaphors, slides, diagrams, or people talking.
+     - GOOD: `"Eciton army ant macro"`, `"Kangaroo joey pouch"`, `"Bismuth hopper crystal"`, `"Cherenkov blue radiation"`, `"Hydrothermal vent ocean"`, `"Volcano lava crater"`.
+     - BAD: `"invisible force field"`, `"magical underwater world"`, `"dark endless void"`, `"amazing chemistry"`.
+   - **CRITICAL `topic_fallback_queries`**: Provide **5 to 6 crisp scientific backup search queries** STRICTLY within the exact same organism/material/habitat (zero off-topic habitats!).
 5. **Scientific Accuracy**: 100% real peer-reviewed facts, numbers, and units. Zero myths or hallucinations.
-6. **Metadata, Micro-Story Closer & Engagement Comment (`comment_prompt`)**:
+6. **Metadata, Music Style (`bgm_mood`) & Engagement Comment (`comment_prompt`)**:
    - `title`: Crisp natural Title Case YouTube Shorts title under 62 chars — **NO `#shorts` or hashtags in title**. NEVER end with "Explained", NEVER start with "The Physics of..." or "It...". MUST be 100% distinct from every title in the avoid list above!
    - `description`: 1–2 concise natural sentences + hashtags: {desc_tags}
    - `tags`: 6-10 relevant SEO keywords
-   - `comment_prompt`: One friendly, curious starter comment (under 110 chars, zero spam/links/subscribe begging) asking viewers a fun question or what extreme phenomenon they want covered next (e.g., `"Would you dare swim near this hydrothermal vent? Drop the next ocean mystery below!"`).
-   - `bgm_mood`: Choose the SINGLE best musical genre for THIS specific video's topic & emotion from:
-     - `"cosmic_ambient"`: space, stars, black holes, deep-sea abyss, serene cosmic awe
-     - `"cinematic_tension"`: dangerous phenomena, volcanoes, predators, explosions, survival stakes
-     - `"upbeat_tech"`: physics paradoxes, clever materials, optical/fluid illusions, engineering
-     - `"nature_organic"`: wildlife, plants, coral reefs, ecosystems, natural earth beauty
-     - `"energetic_drive"`: explosive chemistry, lightning, extreme speed or energy records
-     - `"mystery_piano"`: bizarre puzzles, ancient secrets, myth-busting, weird counterintuitive facts
+   - `comment_prompt`: One friendly, curious starter comment (under 110 chars, zero spam/links/subscribe begging) asking viewers a fun question or what extreme phenomenon they want covered next.
+   - `bgm_mood`: Choose the SINGLE clean documentary music style that best fits THIS story:
+     - `"curious_pizzicato"`: quirky animals, chemistry surprises, unexpected mechanical reveals (plucked strings + crisp mallets)
+     - `"suspense_underscore"`: predators, volcanoes, deep-sea danger, high-stakes survival (tense cello + muted pulse)
+     - `"sleek_documentary"`: modern physics, engineering, lab wonders, clever mechanisms (clean marimba + warm sub-bass)
+     - `"minimal_ambient"`: deep space, cosmic scales, extreme cold/abyss, eerie quiet wonders (warm pads + sparse bells)
+     - `"quirky_plucked"`: insects, weird plants, natural evolution, biological tricks (acoustic harp/plucks + light groove)
+     - `"mystery_keys"`: ancient planetary mysteries, paradoxes, myth-busting, strange materials (warm felt keys + celesta)
 
 Return ONLY valid JSON matching this exact schema:
 {{
@@ -282,12 +291,12 @@ Return ONLY valid JSON matching this exact schema:
   "title": "Catchy Human Title Without Hashtags",
   "description": "Short description with hashtags",
   "tags": ["science", "nature"],
-  "bgm_mood": "cinematic_tension",
+  "bgm_mood": "curious_pizzicato",
   "comment_prompt": "Short friendly curiosity question for viewers",
-  "topic_fallback_queries": ["broad same-habitat query 1", "broad same-habitat query 2", "..."],
+  "topic_fallback_queries": ["scientific backup query 1", "scientific backup query 2", "..."],
   "beats": [
-    {{"narration": "Wait, this deep-sea fish", "search_query": "deep sea snailfish"}},
-    {{"narration": "survives crushing ocean pressure.", "search_query": "mariana trench ocean"}},
+    {{"narration": "When a rogue ant slips inside", "search_query": "army ant colony macro"}},
+    {{"narration": "another colony's underground nest,", "search_query": "ant nest soil macro"}},
     ...
   ]
 }}
@@ -383,17 +392,17 @@ Return ONLY valid JSON matching this exact schema:
                     )
                     continue
 
-            if not (38 <= word_count <= 68 and len(script.beats) >= 10):
+            if not (44 <= word_count <= 78 and len(script.beats) >= 10):
                 if attempt < 2:
                     logger.warning(
-                        "Script pacing out of bounds (%d beats, %d words); regenerating for strict 1.0-2.5s pacing...",
+                        "Script pacing out of bounds (%d beats, %d words); regenerating for Zack-D micro-story pacing...",
                         len(script.beats),
                         word_count,
                     )
                     prompt = (
                         base_prompt
                         + f"\nCORRECTION REQUIRED: Your previous draft had {len(script.beats)} beats and {word_count} words. "
-                        "You MUST output 11 to 13 beats and STRICTLY 48 to 62 words TOTAL (~4-5 words per beat).\n"
+                        "You MUST output 12 to 14 beats and STRICTLY 56 to 72 words TOTAL (~4-6 words per beat).\n"
                     )
                     continue
 
