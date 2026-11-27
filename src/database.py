@@ -99,6 +99,15 @@ class FactoryDatabase:
             ).fetchall()
         return [row["topic"] for row in rows]
 
+    def get_recent_topics_all(self, limit: int = 150) -> list[str]:
+        """Return recent unique topics across ALL channels to prevent cross-channel repeats."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT topic FROM used_topics ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [row["topic"] for row in rows]
+
     def get_recent_clip_ids(self, channel_id: str, limit: int = 500) -> set[str]:
         """Return recently used stock clip IDs for this channel so footage never repeats across Shorts."""
         with self._connect() as conn:
