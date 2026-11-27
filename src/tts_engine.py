@@ -89,7 +89,7 @@ FALLBACK_VOICES = (
 class TTSEngine:
     """Synthesizes English voiceovers and extracts word boundaries + exact duration."""
 
-    def __init__(self, voice: str = "en-US-AndrewMultilingualNeural", rate: str = "+8%") -> None:
+    def __init__(self, voice: str = "en-US-AndrewMultilingualNeural", rate: str = "+5%") -> None:
         self.voice = voice
         self.rate = rate
 
