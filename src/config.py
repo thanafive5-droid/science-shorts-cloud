@@ -20,10 +20,10 @@ class ChannelConfig:
     nasa_ratio: float = 0.0
     allow_animations: bool = True
     tts_voice: str = "en-US-AndrewMultilingualNeural"
-    tts_rate: str = "+8%"
+    tts_rate: str = "+5%"
     cut_min_sec: float = 1.0
     cut_max_sec: float = 2.5
-    bgm_volume: float = 0.28
+    bgm_volume: float = 0.25
     fallback_visual_queries: tuple[str, ...] = ()
     max_daily_uploads: int = 4
     min_interval_hours: float = 3.5
@@ -44,10 +44,10 @@ CHANNELS: dict[str, ChannelConfig] = {
         youtube_handle="@Quantum_Snap_YT_Physics",
         nasa_ratio=0.0,
         tts_voice="en-US-AndrewMultilingualNeural",
-        tts_rate="+8%",
+        tts_rate="+5%",
         cut_min_sec=1.0,
         cut_max_sec=2.5,
-        bgm_volume=0.28,
+        bgm_volume=0.25,
         preferred_ict_hours=(0, 8, 12, 16),
         fallback_visual_queries=(
             "physics experiment magnet",
@@ -70,10 +70,10 @@ CHANNELS: dict[str, ChannelConfig] = {
         youtube_handle="@ReactionRush-v6u",
         nasa_ratio=0.0,
         tts_voice="en-US-BrianNeural",
-        tts_rate="+9%",
+        tts_rate="+6%",
         cut_min_sec=1.0,
         cut_max_sec=2.5,
-        bgm_volume=0.29,
+        bgm_volume=0.26,
         preferred_ict_hours=(0, 4, 8, 12),
         fallback_visual_queries=(
             "chemical reaction laboratory",
@@ -97,10 +97,10 @@ CHANNELS: dict[str, ChannelConfig] = {
         youtube_handle="@BioPulse-Daily-yt",
         nasa_ratio=0.0,
         tts_voice="en-US-EmmaMultilingualNeural",
-        tts_rate="+8%",
+        tts_rate="+5%",
         cut_min_sec=1.0,
         cut_max_sec=2.5,
-        bgm_volume=0.27,
+        bgm_volume=0.24,
         preferred_ict_hours=(4, 8, 12, 16),
         fallback_visual_queries=(
             "coral reef underwater fish",
@@ -124,10 +124,10 @@ CHANNELS: dict[str, ChannelConfig] = {
         nasa_ratio=0.0,
         allow_animations=True,
         tts_voice="en-US-AvaMultilingualNeural",
-        tts_rate="+8%",
+        tts_rate="+5%",
         cut_min_sec=1.0,
         cut_max_sec=2.5,
-        bgm_volume=0.28,
+        bgm_volume=0.25,
         preferred_ict_hours=(0, 8, 12, 16),
         fallback_visual_queries=(
             "science laboratory experiment",
@@ -151,10 +151,10 @@ CHANNELS: dict[str, ChannelConfig] = {
         nasa_ratio=0.0,
         allow_animations=True,
         tts_voice="en-US-AndrewMultilingualNeural",
-        tts_rate="+7%",
+        tts_rate="+4%",
         cut_min_sec=1.0,
         cut_max_sec=2.5,
-        bgm_volume=0.28,
+        bgm_volume=0.25,
         preferred_ict_hours=(4, 8, 12, 16),
         fallback_visual_queries=(
             "volcano lava eruption",
@@ -178,10 +178,10 @@ CHANNELS: dict[str, ChannelConfig] = {
         nasa_ratio=0.5,
         allow_animations=True,
         tts_voice="en-US-BrianNeural",
-        tts_rate="+6%",
+        tts_rate="+4%",
         cut_min_sec=1.0,
         cut_max_sec=2.5,
-        bgm_volume=0.29,
+        bgm_volume=0.26,
         preferred_ict_hours=(0, 4, 8, 12),
         fallback_visual_queries=(
             "spiral galaxy nebula telescope",
@@ -221,7 +221,7 @@ class Settings(BaseSettings):
 
     # TTS
     tts_voice: str = "en-US-AndrewMultilingualNeural"
-    tts_rate: str = "+8%"
+    tts_rate: str = "+5%"
 
     # Paths & Server
     data_dir: Path = Path("/data")
