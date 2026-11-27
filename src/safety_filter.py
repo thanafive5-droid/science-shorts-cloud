@@ -110,10 +110,10 @@ class VisualSafetyFilter:
         parts: list = []
 
         rule_4 = (
-            "4. Ugly abstract wireframes, meaningless fractals, or blurry/dark/low-res footage "
-            "(Clear, colorful educational science animations OR sharp real photos/videos ARE ALLOWED)."
+            "4. Blurry, soft-focus, pixelated, tiny/distant subject, heavily cluttered, ugly abstract wireframes/fractals, "
+            "or low-contrast muddy visuals (MUST be razor-sharp, high-definition, unmistakable scientific photos/videos or crisp 3D science animations)."
             if allow_animations
-            else "4. Abstract lines, wireframes, 2D cartoons, CGI, or blurry footage (MUST be sharp real camera footage)."
+            else "4. Blurry, soft-focus, pixelated, tiny/distant subject, abstract lines, wireframes, 2D cartoons, or CGI (MUST be razor-sharp, high-definition real camera footage)."
         )
 
         topic_line = f'OVERALL VIDEO TOPIC: "{video_topic}"\n' if video_topic else ""
