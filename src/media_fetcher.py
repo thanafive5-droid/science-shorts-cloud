@@ -189,7 +189,7 @@ class MediaFetcher:
             return []
 
     async def _search_wikimedia_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search Wikimedia Commons for sharp, topic-relevant real photos."""
+        """Search Wikimedia Commons for high-resolution (2400px+), sharp, topic-relevant scientific photos."""
         try:
             resp = await client.get(
                 "https://commons.wikimedia.org/w/api.php",
@@ -202,7 +202,7 @@ class MediaFetcher:
                     "gsrlimit": "30",
                     "prop": "imageinfo",
                     "iiprop": "url|mime|size|dimensions",
-                    "iiurlwidth": "1280",
+                    "iiurlwidth": "2400",
                     "format": "json",
                 },
                 timeout=12.0,
@@ -223,8 +223,11 @@ class MediaFetcher:
                 mime = info.get("mime", "")
                 w = info.get("width") or 0
                 h = info.get("height") or 0
-                if url and mime in ("image/jpeg", "image/png") and w >= 720 and h >= 540:
-                    scored.append((score, f"wmimg_{page_id}", url))
+                if url and mime in ("image/jpeg", "image/png") and w >= 950 and h >= 680:
+                    # Reward high-resolution & vertical/square framing so 9:16 renders stay razor-sharp
+                    res_bonus = 3 if (w >= 1600 and h >= 1100) else 0
+                    aspect_bonus = 2 if (h / max(w, 1) >= 0.75) else 0
+                    scored.append((score + res_bonus + aspect_bonus, f"wmimg_{page_id}", url))
             scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
             return [(vid, url) for _, vid, url in scored[:12]]
         except Exception as exc:
@@ -232,7 +235,7 @@ class MediaFetcher:
             return []
 
     async def _search_wikipedia_images(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
-        """Search English Wikipedia article lead images for highly reliable, topic-accurate photography."""
+        """Search English Wikipedia article lead images (2000px / original) for scientific accuracy."""
         try:
             resp = await client.get(
                 "https://en.wikipedia.org/w/api.php",
@@ -244,7 +247,7 @@ class MediaFetcher:
                     "gsrlimit": "8",
                     "prop": "pageimages",
                     "piprop": "original|thumbnail",
-                    "pithumbsize": "1280",
+                    "pithumbsize": "2000",
                     "format": "json",
                 },
                 timeout=10.0,
@@ -257,16 +260,23 @@ class MediaFetcher:
                 title_lower = str(page.get("title", "")).lower()
                 if not _is_safe_text(title_lower, allow_animations=False):
                     continue
-                thumb = page.get("thumbnail") or page.get("original") or {}
-                url = str(thumb.get("source") or "")
+                orig = page.get("original") or {}
+                thumb = page.get("thumbnail") or {}
+                orig_w = orig.get("width") or 0
+                orig_url = str(orig.get("source") or "")
+                if orig_url and any(ext in orig_url.lower() for ext in (".jpg", ".jpeg", ".png")) and 1000 <= orig_w <= 4500:
+                    chosen = orig
+                else:
+                    chosen = thumb or orig
+                url = str(chosen.get("source") or "")
                 low_url = url.lower()
                 if not url or not any(ext in low_url for ext in (".jpg", ".jpeg", ".png")):
                     continue
                 if not _is_safe_text(low_url, allow_animations=False):
                     continue
-                w = thumb.get("width") or 0
-                h = thumb.get("height") or 0
-                if w < 640 or h < 420:
+                w = chosen.get("width") or 0
+                h = chosen.get("height") or 0
+                if w < 900 or h < 650:
                     continue
                 score = _relevance_score(f"{title_lower} {low_url}", query_terms)
                 if query_terms and score == 0:
@@ -276,6 +286,84 @@ class MediaFetcher:
             return [(vid, url) for _, vid, url in scored[:6]]
         except Exception as exc:
             logger.warning("Wikipedia image search failed for '%s': %s", query, exc)
+            return []
+
+    async def _search_inaturalist_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
+        """Search keyless iNaturalist Research-Grade observations for ultra-sharp wildlife & plant macro photography."""
+        try:
+            resp = await client.get(
+                "https://api.inaturalist.org/v1/observations",
+                headers={"User-Agent": USER_AGENT},
+                params={
+                    "q": query,
+                    "quality_grade": "research",
+                    "photos": "true",
+                    "per_page": "10",
+                },
+                timeout=8.0,
+            )
+            resp.raise_for_status()
+            results = resp.json().get("results", [])
+            out: list[tuple[str, str]] = []
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
+            scored: list[tuple[int, str, str]] = []
+            for obs in results:
+                obs_id = obs.get("id")
+                photos = obs.get("photos") or []
+                if not obs_id or not photos:
+                    continue
+                ph = photos[0]
+                dims = ph.get("original_dimensions") or {}
+                w = dims.get("width") or 0
+                h = dims.get("height") or 0
+                if w and h and (w < 900 or h < 650):
+                    continue
+                raw_url = str(ph.get("url") or "")
+                if not raw_url:
+                    continue
+                large_url = raw_url.replace("square.", "large.").replace("medium.", "large.")
+                species_txt = f"{obs.get('species_guess') or ''} {(obs.get('taxon') or {}).get('name') or ''}"
+                if not _is_safe_text(species_txt, allow_animations=False):
+                    continue
+                score = _relevance_score(species_txt, query_terms) + 2
+                scored.append((score, f"inat_{obs_id}", large_url))
+            scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
+            for _, vid, url in scored[:6]:
+                out.append((vid, url))
+            return out
+        except Exception as exc:
+            logger.warning("iNaturalist search failed for '%s': %s", query, exc)
+            return []
+
+    async def _search_nasa_images(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
+        """Search keyless NASA Image Library for high-resolution telescope & Earth observation photography."""
+        try:
+            resp = await client.get(
+                "https://images-api.nasa.gov/search",
+                params={"q": query, "media_type": "image", "page_size": "10"},
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            items = resp.json().get("collection", {}).get("items", [])
+            query_terms = [t.lower() for t in query.split() if len(t) > 2]
+            scored: list[tuple[int, str, str]] = []
+            for item in items:
+                meta = (item.get("data") or [{}])[0]
+                nasa_id = meta.get("nasa_id")
+                links = item.get("links") or []
+                href = str((links[0] if links else {}).get("href") or "")
+                title_desc = f"{meta.get('title', '')} {meta.get('description', '')}"
+                if not nasa_id or not href or not _is_safe_text(title_desc):
+                    continue
+                med_url = href.replace("~thumb.", "~medium.").replace("http://", "https://")
+                score = _relevance_score(title_desc, query_terms)
+                if query_terms and score == 0:
+                    continue
+                scored.append((score, f"nasaimg_{nasa_id}", med_url))
+            scored.sort(key=lambda x: (x[0], random.random()), reverse=True)
+            return [(vid, url) for _, vid, url in scored[:6]]
+        except Exception as exc:
+            logger.warning("NASA image search failed for '%s': %s", query, exc)
             return []
 
     async def _search_openverse_photos(self, client: httpx.AsyncClient, query: str) -> list[tuple[str, str]]:
@@ -305,7 +393,7 @@ class MediaFetcher:
                     continue
                 w = item.get("width") or 0
                 h = item.get("height") or 0
-                if w < 720 or h < 540:
+                if w < 1000 or h < 750:
                     continue
                 raw_url = str(item.get("url") or "")
                 thumb_url = str(item.get("thumbnail") or "")
@@ -608,8 +696,9 @@ class MediaFetcher:
                         for fb_q in rotated_queries:
                             wm_cands = await self._search_wikimedia_photos(client, fb_q)
                             wp_cands = await self._search_wikipedia_images(client, fb_q)
+                            inat_cands = await self._search_inaturalist_photos(client, fb_q)
                             ov_cands = await self._search_openverse_photos(client, fb_q)
-                            for vid, url in [*wm_cands, *wp_cands, *ov_cands]:
+                            for vid, url in [*wm_cands, *wp_cands, *inat_cands, *ov_cands]:
                                 if vid not in used_ids:
                                     used_ids.add(vid)
                                     temp_path = output_dir / f"fb_{stage_name}_{fb_attempt}_{idx:02d}_{vid}.jpg"
@@ -699,16 +788,23 @@ class MediaFetcher:
         if photos_only:
             wm = [(v, u, False) for v, u in await self._search_wikimedia_photos(client, query) if v not in used_ids]
             wp = [(v, u, False) for v, u in await self._search_wikipedia_images(client, query) if v not in used_ids]
+            inat = [(v, u, False) for v, u in await self._search_inaturalist_photos(client, query) if v not in used_ids]
             ov = [(v, u, False) for v, u in await self._search_openverse_photos(client, query) if v not in used_ids]
             interleaved: list[tuple[str, str, bool]] = []
-            max_len = max(len(wm), len(wp), len(ov), 0)
+            max_len = max(len(wm), len(wp), len(inat), len(ov), 0)
             for k in range(max_len):
                 if k < len(wm):
                     interleaved.append(wm[k])
                 if k < len(wp):
                     interleaved.append(wp[k])
+                if k < len(inat):
+                    interleaved.append(inat[k])
                 if k < len(ov):
                     interleaved.append(ov[k])
+            if allow_nasa:
+                for vid, url in await self._search_nasa_images(client, query):
+                    if vid not in used_ids:
+                        interleaved.append((vid, url, True))
             return interleaved
 
         non_nasa: list[tuple[str, str, bool]] = []
@@ -746,6 +842,9 @@ class MediaFetcher:
             for vid, url in await self._search_wikipedia_images(client, query):
                 if vid not in used_ids:
                     non_nasa.append((vid, url, False))
+            for vid, url in await self._search_inaturalist_photos(client, query):
+                if vid not in used_ids:
+                    non_nasa.append((vid, url, False))
             for vid, url in await self._search_openverse_photos(client, query):
                 if vid not in used_ids:
                     non_nasa.append((vid, url, False))
@@ -754,6 +853,10 @@ class MediaFetcher:
             for vid, url in await self._search_nasa(client, query):
                 if vid not in used_ids:
                     nasa_list.append((vid, url, True))
+            if include_photos:
+                for vid, url in await self._search_nasa_images(client, query):
+                    if vid not in used_ids:
+                        nasa_list.append((vid, url, True))
 
         if prefer_nasa:
             return nasa_list + non_nasa
